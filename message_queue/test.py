@@ -2,8 +2,7 @@
 import string
 import random
 
-import mq
-from mq import *
+from src.message_queue.mq import *
 
 def random_msg():
 	return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
