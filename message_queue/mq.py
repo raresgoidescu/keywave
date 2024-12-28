@@ -2,15 +2,26 @@ from queue import Queue
 
 # 0 = nothing, 1 = errors only, 2 = normal
 MQ_LOG_LEVEL = 2
-user_to_queue_map = None
+user_to_queue_map = {}
 
 def mq_init():
-	user_to_queue_map = {}
+	user_to_queue_map.clear()
 
 	if MQ_LOG_LEVEL >= 2:
 		print(f'[INFO] Initialised message storage with an empty map')
 
 	return True
+
+def mq_set_log_level(level):
+	global MQ_LOG_LEVEL
+	
+	if level < 0:
+		level = 0
+	
+	if level > 2:
+		level = 2
+
+	MQ_LOG_LEVEL = level
 
 '''
 server logic:
@@ -33,7 +44,7 @@ def __get_queue(target: str) -> Queue:
 	return user_to_queue_map[target]
 
 
-def store(msg, target: str):
+def mq_store(msg, target: str):
 	q = __get_queue(target)
 
 	q.put(msg)
@@ -57,13 +68,19 @@ handle_user_login() {
 }
 '''
 
-def has_msg(username: str):
+def mq_has_msg(username: str):
 	q = __get_queue(username)
 
 	return q.qsize() > 0
 
 
-def pop_front(username: str):
+def mq_pop_front(username: str):
 	q = __get_queue(username)
 
-	return q.get()
+	if q.qsize() == 0:
+		if MQ_LOG_LEVEL >= 1:
+			print(f'[WARN] Trying to get message for user \'{username}\' with empty queue')
+
+		return None
+
+	return q.get(block=False)
