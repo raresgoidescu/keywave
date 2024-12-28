@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from database import Database
 
 def main():
@@ -23,8 +25,12 @@ def main():
         elif choice == "2":
             username = input("Enter username to delete: ")
             password = input("Enter password: ")
-            db.delete_user(username, password)
-            print("User deleted successfully.")
+
+            ret = db.delete_user(username, password)
+            if ret:
+                print("User deleted successfully.")
+            else:
+                print("Invalid username or password")
 
         elif choice == "3":
             username = input("Enter username: ")
