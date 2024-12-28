@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 
-from typing import override
 import unittest
 import socket
 from unittest.mock import MagicMock
-from src.socket_map.client_socket_map import ClientSocketMap
+from src.server.socket_map.client_socket_map import ClientSocketMap
 
 class TestClientSocketMap(unittest.TestCase):
-    @override
     def setUp(self):
         self.client_map = ClientSocketMap()
 
