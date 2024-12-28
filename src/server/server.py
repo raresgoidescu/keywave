@@ -2,6 +2,10 @@
 import socket
 import threading
 
+from database.database import Database
+from message_queue.mq import *
+from socket_map.client_socket_map import ClientSocketMap
+
 PORT = 15243
 
 def handle_client(socket: socket.socket, addr: tuple[str, int]):
@@ -29,6 +33,16 @@ def handle_client(socket: socket.socket, addr: tuple[str, int]):
 
 
 def start():
+	# initialise database
+	users_database = Database()
+
+	# initialise message queue
+	mq_init()
+	mq_set_log_level(2)
+
+	# initialise socket map
+	client_to_socket_map = ClientSocketMap()
+
 	listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	listener.bind(("0.0.0.0", PORT))
 	listener.listen(128)
