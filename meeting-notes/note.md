@@ -65,4 +65,4 @@
 - handle encrypted message forwards in the server
 
 ### V. Documentatie
-- asta o lasam la final, facem toti (si alte glume bune pe care ti le spui cand te-a parasit nevasta)
+- asta o lasam la final, facem toti
