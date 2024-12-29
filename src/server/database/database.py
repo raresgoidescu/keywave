@@ -28,8 +28,13 @@ class Database:
         """Hash a password using SHA-256."""
         return hashlib.sha256(password.encode()).hexdigest()
 
+    
     def add_user(self, username, password):
-        """Add a new user to the database."""
+        '''
+        attempt to add a new user 
+
+        return user id on succes, or -1 on failure 
+        '''
         try:
             with sqlite3.connect(self.db_name) as conn:
                 cursor = conn.cursor()
@@ -39,12 +44,18 @@ class Database:
                     (username, hashed_password),
                 )
                 conn.commit()
-                return True
+
+                new_id = cursor.lastrowid
+
+                print(f'[INFO] Database: created acc with id = {new_id}')
+                return new_id
         except sqlite3.IntegrityError:
-            return False
+            return -1
 
     def delete_user(self, username, password):
-        """Delete a user from the database if the password is correct."""
+        """
+        Delete a user from the database if the password is correct.
+        """
         with sqlite3.connect(self.db_name) as conn:
             cursor = conn.cursor()
             hashed_password = self._hash_password(password)
@@ -58,6 +69,7 @@ class Database:
 
     def verify_user(self, username, password):
         """Verify if the username and password pair is correct."""
+        
         with sqlite3.connect(self.db_name) as conn:
             cursor = conn.cursor()
             hashed_password = self._hash_password(password)
@@ -65,5 +77,9 @@ class Database:
                 "SELECT * FROM users WHERE username = ? AND password = ?",
                 (username, hashed_password),
             )
-            # using fetchone() to verify if the interogation for username and password returned a value:
-            return cursor.fetchone() is not None
+
+            user = cursor.fetchone()
+            if user is None:
+                return -1
+            
+            return user[0]

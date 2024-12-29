@@ -33,10 +33,12 @@ class Server():
 		password = parsed_event['password']
 
 		print(f"[INFO] Attempted login by '{username}' with pass '{password}'")
-		valid_login = self.users_db.verify_user(username, password)
+		acc_id = self.users_db.verify_user(username, password)
+		print(f"[INFO] Retrieved id = {acc_id} for ['{username}', '{password}']")
 		
-		if valid_login:
+		if acc_id > 0:
 			ctx['username'] = username
+			ctx['uid'] = acc_id
 			client.send('Login successful'.encode('utf-8'))
 		else:
 			client.send('Login failed'.encode('utf-8'))
@@ -46,10 +48,11 @@ class Server():
 		password = parsed_event['password']
 
 		print(f"[INFO] Creating new account '{username}' with pass '{password}'")
-		acc_created = self.users_db.add_user(username, password)
+		new_acc_id = self.users_db.add_user(username, password)
 		
-		if acc_created:
+		if new_acc_id > 0:
 			ctx['username'] = username
+			ctx['uid'] = new_acc_id
 			client.send('Login successful'.encode('utf-8'))
 		else:
 			client.send('Login failed'.encode('utf-8'))
@@ -78,6 +81,7 @@ class Server():
 
 		context = {
 			"username": None,
+			"uid": -1,
 			"active": True
 		}
 
