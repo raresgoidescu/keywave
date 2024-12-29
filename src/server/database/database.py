@@ -69,7 +69,7 @@ class Database:
 
     def verify_user(self, username, password):
         """Verify if the username and password pair is correct."""
-        
+
         with sqlite3.connect(self.db_name) as conn:
             cursor = conn.cursor()
             hashed_password = self._hash_password(password)
@@ -83,3 +83,16 @@ class Database:
                 return -1
             
             return user[0]
+        
+
+    def get_uid(self, username):
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+
+            user = cursor.fetchone()
+            if user is None:
+                return -1
+            
+            return user[0]
+
