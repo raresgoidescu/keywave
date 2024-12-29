@@ -21,51 +21,62 @@ class Server():
 		self.client_to_socket_map = ClientSocketMap()
 
 
-	def handle_event(self, event: str, client: socket.socket):
+	def handle_acc_login_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
+		username = parsed_event['username']
+		password = parsed_event['password']
+
+		print(f"[INFO] Attempted login by '{username}' with pass '{password}'")
+		valid_login = self.users_db.verify_user(username, password)
+		
+		if valid_login:
+			ctx['username'] = username
+			client.send('Login successful'.encode('utf-8'))
+		else:
+			client.send('Login failed'.encode('utf-8'))
+
+	def handle_acc_create_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
+		username = parsed_event['username']
+		password = parsed_event['password']
+
+		print(f"[INFO] Creating new account '{username}' with pass '{password}'")
+		acc_created = self.users_db.add_user(username, password)
+		
+		if acc_created:
+			ctx['username'] = username
+			client.send('Login successful'.encode('utf-8'))
+		else:
+			client.send('Login failed'.encode('utf-8'))
+
+
+	def handle_event(self, event: str, client: socket.socket, ctx: dict):
 		parsed_event = json.loads(event)
 
 		if "event_type" not in event:
-			client.send("Invalid event, no type specified :(")
+			client.send("Invalid event, no type specified :(".encode('utf-8'))
 
 		event_type = int(parsed_event["event_type"])
 
 		if event_type == Events.REQ_ACC_LOGIN.value:
-			username = parsed_event['username']
-			password = parsed_event['password']
-
-			print(f"[INFO] Attempted login by '{username}' with pass '{password}'")
-			valid_login = self.users_db.verify_user(username, password)
-			
-			if valid_login:
-				# todo save to some kind of context
-				client.send('Login successful (allegedly)'.encode('utf-8'))
-			else:
-				client.send('Login failed'.encode('utf-8'))
-
+			self.handle_acc_login_event(parsed_event, client, ctx)
+		elif event_type == Events.REQ_ACC_CREATE.value:
+			self.handle_acc_create_event(parsed_event, client, ctx)
 		else:
 			client.send(f'Unknown event type {event_type}'.encode('utf-8'))
+
 
 	def handle_client(self, socket: socket.socket, addr: tuple[str, int]):
 		print(f'[INFO] New connection from address {addr}')
 
-		# first message specifies (user, password)
-		first_message = socket.recv(1024).decode('utf-8')
-		print(f'[INFO] {addr} said: "{first_message}"')
+		context = {
+			"username": None
+		}
 
-		self.handle_event(first_message, socket)
+		while True:
+			message = socket.recv(1024).decode('utf-8')
+			print(f'[INFO] {addr} said: "{message}"')
 
-		# db.verify() or db.new_user()
-		# if verify() fails, respond with error and close socket
-
-		# socket_map.store(username, socket)
-
-		# while True:
-		# 	message = socket.recv(1024).decode('utf-8')
-		# 	print(f'[INFO] {username} said "{message}"')
-
-		# 	# handle all types of events eventually
-		# 	response = f'Hi {username}, you said "{message}"'
-		# 	socket.send(response.encode('utf-8'))
+			# handle all types of events eventually
+			self.handle_event(message, socket, context)
 
 
 	def start(self):
