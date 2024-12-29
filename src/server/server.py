@@ -20,6 +20,13 @@ class Server():
 
 		self.client_to_socket_map = ClientSocketMap()
 
+	
+	def handle_disconnect_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
+		print(f"[INFO] Client disconnected, shutting down socket")
+		client.close()
+
+		ctx['active'] = False
+
 
 	def handle_acc_login_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
 		username = parsed_event['username']
@@ -56,7 +63,9 @@ class Server():
 
 		event_type = int(parsed_event["event_type"])
 
-		if event_type == Events.REQ_ACC_LOGIN.value:
+		if event_type == Events.DISCONNECT.value:
+			self.handle_disconnect_event(parsed_event, client, ctx)
+		elif event_type == Events.REQ_ACC_LOGIN.value:
 			self.handle_acc_login_event(parsed_event, client, ctx)
 		elif event_type == Events.REQ_ACC_CREATE.value:
 			self.handle_acc_create_event(parsed_event, client, ctx)
@@ -68,10 +77,11 @@ class Server():
 		print(f'[INFO] New connection from address {addr}')
 
 		context = {
-			"username": None
+			"username": None,
+			"active": True
 		}
 
-		while True:
+		while context['active']:
 			message = socket.recv(1024).decode('utf-8')
 			print(f'[INFO] {addr} said: "{message}"')
 
