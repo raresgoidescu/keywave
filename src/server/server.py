@@ -22,7 +22,9 @@ class Server():
 
 	
 	def handle_disconnect_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
-		print(f"[INFO] Client disconnected, shutting down socket")
+		print(f"[INFO] Client [uid = {ctx['uid']}] disconnected, shutting down socket")
+
+		self.client_to_socket_map.remove_client(ctx['uid'])
 		client.close()
 
 		ctx['active'] = False
@@ -39,6 +41,9 @@ class Server():
 		if acc_id > 0:
 			ctx['username'] = username
 			ctx['uid'] = acc_id
+
+			self.client_to_socket_map.add_client(acc_id, client)
+
 			client.send('Login successful'.encode('utf-8'))
 		else:
 			client.send('Login failed'.encode('utf-8'))
@@ -53,6 +58,9 @@ class Server():
 		if new_acc_id > 0:
 			ctx['username'] = username
 			ctx['uid'] = new_acc_id
+
+			self.client_to_socket_map.add_client(new_acc_id, client)
+
 			client.send('Login successful'.encode('utf-8'))
 		else:
 			client.send('Login failed'.encode('utf-8'))
