@@ -29,6 +29,33 @@ class Server():
 
 		ctx['active'] = False
 
+	
+	def handle_send_message_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
+		target_username = parsed_event['target']
+		message_content = parsed_event['content']
+
+		# todo early return if sender is not logged in 
+
+		print(f"[INFO] {ctx['username']} (uid = {ctx['uid']}) wants to say '{message_content}' to {target_username}")
+
+		target_id = self.users_db.get_uid(target_username)
+		print(f"[INFO] {target_username}'s id is {target_id}")
+
+		if target_id < 0:
+			client.send(f'{target_username} doesn\'t exist :('.encode('utf-8'))
+			return
+		
+		target_sck = self.client_to_socket_map.get_client_socket(target_id)
+
+		if target_sck is not None:
+			print(f"[INFO] Will send '{message_content}' to {target_id}'s socket")
+			# todo figure out how to send updates to client
+			client.send(f'Sent {message_content} to {target_username}'.encode('utf-8'))
+		else:
+			print(f"[INFO] {target_id} has no active socket, will store the message")
+			mq_store(message_content, target_username)
+			client.send(f'{target_username} is not online, your message will be sent when they log in'.encode('utf-8'))
+
 
 	def handle_acc_login_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
 		username = parsed_event['username']
@@ -87,6 +114,8 @@ class Server():
 			self.handle_acc_login_event(parsed_event, client, ctx)
 		elif event_type == Events.REQ_ACC_CREATE.value:
 			self.handle_acc_create_event(parsed_event, client, ctx)
+		elif event_type == Events.SEND_MESSAGE.value:
+			self.handle_send_message_event(parsed_event, client, ctx)
 		else:
 			client.send(f'Unknown event type {event_type}'.encode('utf-8'))
 
