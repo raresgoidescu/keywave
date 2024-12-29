@@ -1,8 +1,7 @@
 #! /usr/bin/env python3
-import keyboard
 
 def main():
-    friends = ["cristi", "dani", "rares", "mihai", "alex", "ion", "gabi", "florin", "vlad", "andrei"]
+    friends = ["cristi", "dani", "rares", "mihai"]
 
     while True:
         print("\nChoose an option:")
@@ -10,7 +9,6 @@ def main():
         print("2. Add friend")
         print("3. Remove friend")
         print("4. Exit")
-        print("Go back: esc")
 
         choice = input("\nEnter your choice: ")
 
@@ -18,79 +16,73 @@ def main():
             choice = int(choice)
 
             if choice == 1:
-                while True:
-                    print("\nYour friends:")
-                    for i, friend in enumerate(friends, start=1):
-                        print(f"{i}. {friend}")
+                print("\nYour friends:")
+                for i, friend in enumerate(friends, start = 1):
+                    print(f"{i}. {friend}")
 
-                    # print("(Press Esc to go back, Enter to continue) ")
-                    # if keyboard.is_pressed("esc"):
-                    #     break
+                friend_index = input("Choose a friend to message (by number): ")
 
-                    action = input("(Press Esc to go back, Enter to continue) ")
-                    if (action == "esc"):
-                        break
+                if friend_index.isdigit():
+                    friend_index = int(friend_index) - 1
 
-                    friend_index = input("Choose a friend to message (by number): ")
-                    if friend_index.isdigit():
-                        friend_index = int(friend_index) - 1
-                        if (0 <= friend_index) and (friend_index < len(friends)):
-                            message = input("Enter your message: ").strip()
+                    if (0 <= friend_index) and (friend_index < len(friends)):
+                        print("(Type '/back' to go back.)")
+                        while True:
+                            message = input("Enter your message> ").strip()
+
+                            if (message == "/back"):
+                                break
+
                             print(f"Message \"{message}\" sent to {friends[friend_index]}!")
-                        else:
-                            print("Invalid choice. Please select a valid friend.")
-                        break
                     else:
-                        print("Invalid input. Please enter a valid number.")
+                        print("Invalid choice. Please select a valid friend.")
+                else:
+                    print("Invalid input. Please enter a valid number.")
 
             elif choice == 2:
-                while True:
+                text = input("Enter the name of the new friend (or /back): ").strip()
 
-                    # print("(Press Esc to go back, Enter to continue) ")
-                    # if keyboard.is_pressed("esc"):
-                    #     break
+                if (text == "/back"):
+                    continue
 
-                    action = input("(Press Esc to go back, Enter to continue) ")
-                    if (action == "esc"):
-                        break
-
-                    new_friend = input("Enter the name of the new friend: ").strip()
-
-                    if new_friend:
-                        if new_friend not in friends:
-                            friends.append(new_friend)
-                            print(f"{new_friend} has been added to your friends list.")
-                        else:
-                            print(f"{new_friend} is already in your friends list.")
-                        break
+                if text:
+                    if text not in friends:
+                        friends.append(text)
+                        print(f"{text} has been added to your friends list.")
                     else:
-                        print("Friend name cannot be empty.")
+                        print(f"{text} is already in your friends list.")
+                else:
+                    print("Friend name cannot be empty.")
 
             elif choice == 3:
-                while True:
-                    print("\nYour friends:")
-                    for i, friend in enumerate(friends, start=1):
-                        print(f"{i}. {friend}")
+                # Remove friend
+                print("\nYour friends:")
+                for i, friend in enumerate(friends, start=1):
+                    print(f"{i}. {friend}")
 
-                    # print("(Press Esc to go back, Enter to continue) ")
-                    # if keyboard.is_pressed("esc"):
-                    #     break
+                friend_index = input("(/back to go back) Choose a friend to remove (by number): ")
 
-                    action = input("(Press Esc to go back, Enter to continue) ")
-                    if (action == "esc"):
-                        break
+                if (friend_index == "/back"):
+                    continue
 
-                    friend_index = input("Choose a friend to remove (by number): ")
-                    if friend_index.isdigit():
-                        friend_index = int(friend_index) - 1
-                        if 0 <= friend_index < len(friends):
-                            removed_friend = friends.pop(friend_index)
-                            print(f"{removed_friend} has been removed from your friends list.")
-                        else:
-                            print("Invalid choice. Please select a valid friend.")
-                        break
+                if friend_index.isdigit():
+                    friend_index = int(friend_index) - 1
+                    if 0 <= friend_index < len(friends):
+                        confirmation = input("Are you sure? [y/n] ")
+
+                        if confirmation == "n":
+                            continue
+
+                        removed_friend = friends.pop(friend_index)
+
+                        # TODO: client.remove_friend(username)
+
+                        print(f"{removed_friend} has been removed from your friends list.")
                     else:
-                        print("Invalid input. Please enter a valid number.")
+                        print("Invalid choice. Please select a valid friend.")
+                    continue
+                else:
+                    print("Invalid input. Please enter a valid number.")
 
             elif choice == 4:
                 print("See you later alligator")
@@ -98,8 +90,10 @@ def main():
 
             else:
                 print("Invalid choice. Please select an option between 1 and 4.")
+
         else:
             print("Invalid input. Please enter a number between 1 and 4.")
 
 if __name__ == "__main__":
     main()
+
