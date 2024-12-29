@@ -59,10 +59,17 @@ class Server():
 
 
 	def handle_event(self, event: str, client: socket.socket, ctx: dict):
-		parsed_event = json.loads(event)
+		parsed_event = {}
+		
+		try:
+			parsed_event = json.loads(event)
+		except json.JSONDecodeError:
+			client.send("Invalid event, not JSON".encode('utf-8'))
+			return
 
 		if "event_type" not in event:
 			client.send("Invalid event, no type specified :(".encode('utf-8'))
+			return
 
 		event_type = int(parsed_event["event_type"])
 
@@ -87,7 +94,7 @@ class Server():
 
 		while context['active']:
 			message = socket.recv(1024).decode('utf-8')
-			print(f'[INFO] {addr} said: "{message}"')
+			print(f'[INFO] {addr} (uid = {context["uid"]}) said: "{message}"')
 
 			# handle all types of events eventually
 			self.handle_event(message, socket, context)
