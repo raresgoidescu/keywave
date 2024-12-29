@@ -110,9 +110,9 @@ if __name__ == "__main__":
     while (log_level_set == False):
         log_level_set = set_log_level()
 
-    logged = False
-
     clear_screen()
+
+    logged = False
 
     while (logged == False):
         choice = get_account_action()
