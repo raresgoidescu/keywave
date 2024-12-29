@@ -50,6 +50,16 @@ def send_create_account(sck: socket.socket, username: str, password: str):
 
 	return res.decode('utf-8')
 
+def send_message(sck: socket.socket, username: str, target: str, content: str):
+	msg = json.dumps({
+		'event_type': Events.SEND_MESSAGE.value,
+		'source': username,
+		'target': target,
+		'content': content
+	})
+
+	res = send_with_log(sck, msg)
+	return res.decode('utf-8')
 
 PORT = 18251
 def main():
@@ -69,13 +79,10 @@ def main():
 
 	while (True):
 		try:
-			msg = input()
+			msg = input("Type your message: ")
+			target = input("Recipient: ")
 
-			print(f'[INFO] Will send "{msg}" to socket')
-			client.send(msg.encode('utf-8'))
-
-			res = client.recv(1024).decode('utf-8')
-			print(f'Server responed with "{res}"')
+			_ = send_message(client, username, target, msg)
 
 		except KeyboardInterrupt:
 			print(f'[INFO] Disconnecting')
