@@ -1,16 +1,29 @@
 #!/usr/bin/env python3
 import socket
 import json
+import sys
 
 from src.data_structures.events import Events
 
-def send_with_log(sck: socket.socket, msg: str):
+def send_with_log(sck: socket.socket, msg: str, no_receive=False):
 	print(f'[INFO] Sending \'{msg}\' to server')
 	sck.send(msg.encode('utf-8'))
 
+	if no_receive:
+		return ""
+	
 	res = sck.recv(1024)
 	print(f'[INFO] Received \'{res}\' from server')
 
+	return res
+
+
+def send_disconnect(sck: socket.socket):
+	msg = json.dumps({
+		'event_type': Events.DISCONNECT.value
+	})
+
+	res = send_with_log(sck, msg, no_receive=True)
 	return res
 
 
@@ -55,13 +68,22 @@ def main():
 			send_create_account(client, username, password)
 
 	while (True):
-		msg = input()
+		try:
+			msg = input()
 
-		print(f'[INFO] Will send "{msg}" to socket')
-		client.send(msg.encode('utf-8'))
+			print(f'[INFO] Will send "{msg}" to socket')
+			client.send(msg.encode('utf-8'))
 
-		res = client.recv(1024).decode('utf-8')
-		print(f'Server responed with "{res}"')
+			res = client.recv(1024).decode('utf-8')
+			print(f'Server responed with "{res}"')
+
+		except KeyboardInterrupt:
+			print(f'[INFO] Disconnecting')
+			send_disconnect(client)
+
+			client.close()
+			sys.exit(0)
+
 
 if __name__ == '__main__':
 	main()
