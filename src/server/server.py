@@ -125,6 +125,21 @@ class Server():
 
 		# todo queue this request and send to the target client
 
+	def handle_client_refresh_event(self, event: str, client: socket.socket, ctx: dict):
+		if ctx['username'] is None or ctx['uid'] == -1:
+			client.send(f'[ERROR] you need to be logged in')
+			return
+		
+		id = ctx['uid']
+		updates = []
+		while not self.events.empty(id):
+			updates.append(self.events.pop_front(id))
+		
+		res = json.dumps({
+			"updates": updates
+		})
+		client.send(res.encode('utf-8'))
+
 
 	def handle_event(self, event: str, client: socket.socket, ctx: dict):
 		parsed_event = {}
@@ -149,6 +164,8 @@ class Server():
 			self.handle_acc_create_event(parsed_event, client, ctx)
 		elif event_type == Events.SEND_MESSAGE.value:
 			self.handle_send_message_event(parsed_event, client, ctx)
+		elif event_type == Events.REQ_SEND_UPDATES.value:
+			self.handle_client_refresh_event(parsed_event, client, ctx)
 		else:
 			client.send(f'Unknown event type {event_type}'.encode('utf-8'))
 
