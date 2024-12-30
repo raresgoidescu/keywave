@@ -138,23 +138,32 @@ def main(client: Client):
 
                     if (0 <= friend_index) and (friend_index < len(client.friends)):
                         friend_username = client.friends[friend_index]
-                        clear_screen()
-
-                        print(f'Chat started with {friend_username}')
-                        print("(Type '/back' to go back.)")
+                        first_render = True
 
                         while True:
+                            clear_screen()
+                            if first_render:
+                                print(f'New chat started with {friend_username}')
+                            else:
+                                print(f'Chat with {friend_username}')
+                                client.get_updates()
+
+                            first_render = False
+                            print("(Type your message, '/r' to refresh or '/b' to go back.)")
+
                             message = input("> ").strip()
 
-                            if (message == "/back"):
+                            if (message == "/b"):
                                 break
+
+                            if (message == "/r"):
+                                continue
                             
                             if log_level >= 2:
                                 print(f"[INFO] Sending \"{message}\" sent to {friend_username}...")
                             res = client.send_message(friend_username, message)
                             if log_level >= 2:
                                 print(f"[INFO] Server said '{res}'")
-                            client.get_updates()
                     else:
                         print("Invalid choice. Please select a valid friend.")
                 else:
