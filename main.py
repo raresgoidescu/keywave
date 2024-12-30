@@ -74,7 +74,7 @@ def process_account_action(choice: int, client: Client) -> bool:
             return False
 
         client.set_credentials(username, password)
-        ret = client.send_acc_create(username, password)
+        ret = client.send_acc_create()
 
         return client.logged_in
 
