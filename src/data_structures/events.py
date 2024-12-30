@@ -5,6 +5,11 @@ class Events(Enum):
 	REQ_ACC_LOGIN = 1
 	REQ_ACC_CREATE = 2
 	REQ_ADD_FRIEND = 3
+	REQ_SEND_UPDATES = 4
 	# todo DH events
 	SEND_MESSAGE = 10
+
+	# client events
+	EVT_NEW_MESSAGE = 201
+	EVT_NEW_REQUEST = 202
 
