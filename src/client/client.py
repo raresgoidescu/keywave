@@ -12,6 +12,7 @@ class Client():
 		self.logged_in = False
 
 		self.friends = []
+		self.logs = {}
 
 	
 	def set_log_level(self, log_level: int):
@@ -107,6 +108,15 @@ class Client():
 
 		res = self.__send_to_server(msg)
 		print(res)
+
+
+	def log_new_message(self, target: str, content: str, own_message = False):
+		sender = self.username if own_message else target
+
+		if not target in self.logs:
+			self.logs[target] = []
+
+		self.logs[target].append(f'{sender}: {content}')
 
 
 	def disconnect(self):
