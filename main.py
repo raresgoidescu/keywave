@@ -103,22 +103,33 @@ def process_account_action(choice: int, client: Client) -> bool:
     return False
 
 
-def main():
+def main(client: Client):
+    # todo this needs to be a field in client
     friends = ["cristi", "dani", "rares", "mihai"]
 
     while True:
+        # clear_screen()
+        # print(f'Welcome, {client.username}!')
+
+        CHOICE_MSG = 1
+        CHOICE_FRIEND_ADD = 2
+        CHOICE_FRIEND_RM = 3
+        CHOICE_REFRESH = 4
+        CHOICE_EXIT = 0
+
         print("\nChoose an option:")
         print("1. Send message")
         print("2. Add friend")
         print("3. Remove friend")
-        print("4. Exit")
+        print("4. Refresh")
+        print("0. Exit")
 
         choice = input("\nEnter your choice: ")
 
         if choice.isdigit():
             choice = int(choice)
 
-            if choice == 1:
+            if choice == CHOICE_MSG:
                 print("\nYour friends:")
                 for i, friend in enumerate(friends, start = 1):
                     print(f"{i}. {friend}")
@@ -142,7 +153,7 @@ def main():
                 else:
                     print("Invalid input. Please enter a valid number.")
 
-            elif choice == 2:
+            elif choice == CHOICE_FRIEND_ADD:
                 text = input("Enter the name of the new friend (or /back): ").strip()
 
                 if (text == "/back"):
@@ -157,7 +168,7 @@ def main():
                 else:
                     print("Friend name cannot be empty.")
 
-            elif choice == 3:
+            elif choice == CHOICE_FRIEND_RM:
                 # Remove friend
                 print("\nYour friends:")
                 for i, friend in enumerate(friends, start=1):
@@ -187,7 +198,12 @@ def main():
                 else:
                     print("Invalid input. Please enter a valid number.")
 
-            elif choice == 4:
+            elif choice == CHOICE_REFRESH:
+                client.get_updates()
+                continue
+
+            elif choice == CHOICE_EXIT:
+                client.disconnect()
                 print("See you later alligator")
                 break
 
@@ -217,7 +233,5 @@ if __name__ == "__main__":
 
     clear_screen()
 
-    print(f'Welcome, {client.username}!')
-
-    main()
+    main(client)
 
