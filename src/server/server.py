@@ -4,7 +4,7 @@ import threading
 import json
 
 from database.database import Database
-from message_queue.mq import *
+from event_queue.event_queue import EventQueue
 from socket_map.client_socket_map import ClientSocketMap
 
 from src.data_structures.events import Events
@@ -14,10 +14,7 @@ PORT = 18251
 class Server():
 	def __init__(self):
 		self.users_db = Database()
-
-		mq_init()
-		mq_set_log_level(0)
-
+		self.events = EventQueue()
 		self.client_to_socket_map = ClientSocketMap()
 
 	
@@ -47,13 +44,20 @@ class Server():
 		
 		target_sck = self.client_to_socket_map.get_client_socket(target_id)
 
+		event = {
+			'type': Events.EVT_NEW_MESSAGE,
+			'content': {
+				'source': ctx['username'],
+				'content': message_content
+			}
+		}
+		self.events.store(event, target_id)
+
 		if target_sck is not None:
 			print(f"[INFO] Will send '{message_content}' to {target_id}'s socket")
-			# todo figure out how to send updates to client
 			client.send(f'Sent {message_content} to {target_username}'.encode('utf-8'))
 		else:
 			print(f"[INFO] {target_id} has no active socket, will store the message")
-			mq_store(message_content, target_username)
 			client.send(f'{target_username} is not online, your message will be sent when they log in'.encode('utf-8'))
 
 
@@ -167,16 +171,6 @@ class Server():
 
 
 	def start(self):
-		# initialise database
-		users_database = Database()
-
-		# initialise message queue
-		mq_init()
-		mq_set_log_level(2)
-
-		# initialise socket map
-		client_to_socket_map = ClientSocketMap()
-
 		listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		listener.bind(("0.0.0.0", PORT))
 		listener.listen(128)
