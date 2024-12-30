@@ -4,7 +4,7 @@ import threading
 import json
 
 from database.database import Database
-from message_queue.mq import *
+from event_queue.event_queue import EventQueue
 from socket_map.client_socket_map import ClientSocketMap
 
 from src.data_structures.events import Events
@@ -14,10 +14,7 @@ PORT = 18251
 class Server():
 	def __init__(self):
 		self.users_db = Database()
-
-		mq_init()
-		mq_set_log_level(0)
-
+		self.events = EventQueue()
 		self.client_to_socket_map = ClientSocketMap()
 
 	
@@ -47,13 +44,20 @@ class Server():
 		
 		target_sck = self.client_to_socket_map.get_client_socket(target_id)
 
+		event = {
+			'type': Events.EVT_NEW_MESSAGE.value,
+			'content': {
+				'source': ctx['username'],
+				'content': message_content
+			}
+		}
+		self.events.store(event, target_id)
+
 		if target_sck is not None:
 			print(f"[INFO] Will send '{message_content}' to {target_id}'s socket")
-			# todo figure out how to send updates to client
 			client.send(f'Sent {message_content} to {target_username}'.encode('utf-8'))
 		else:
 			print(f"[INFO] {target_id} has no active socket, will store the message")
-			mq_store(message_content, target_username)
 			client.send(f'{target_username} is not online, your message will be sent when they log in'.encode('utf-8'))
 
 
@@ -93,6 +97,50 @@ class Server():
 			client.send('Login failed'.encode('utf-8'))
 
 
+	def handle_friend_request_event(self, parsed_event: str, client: socket.socket, ctx: dict):
+		if 'username' not in ctx:
+			client.send(f'[ERROR] you need to be logged in')
+			return
+		
+		if 'target' not in ctx:
+			client.send(f'[ERROR] no target')
+			return
+		
+		source = ctx['username']
+		target = ctx['target']
+
+		# todo check if they're already friends
+
+		target_id = self.users_db.get_uid(target)
+		if target_id < 0:
+			client.send(f'[ERROR] User \'{target}\' doesn\'t exist')
+			return
+		
+		target_sck = self.client_to_socket_map.get_client_socket()
+		if target_sck is None:
+			client.send(f"[ERROR] User '{target}' is not online")
+			return
+		
+		# todo check if user is talking to someone else
+
+		# todo queue this request and send to the target client
+
+	def handle_client_refresh_event(self, event: str, client: socket.socket, ctx: dict):
+		if ctx['username'] is None or ctx['uid'] == -1:
+			client.send(f'[ERROR] you need to be logged in')
+			return
+		
+		id = ctx['uid']
+		updates = []
+		while not self.events.empty(id):
+			updates.append(self.events.pop_front(id))
+		
+		res = json.dumps({
+			"updates": updates
+		})
+		client.send(res.encode('utf-8'))
+
+
 	def handle_event(self, event: str, client: socket.socket, ctx: dict):
 		parsed_event = {}
 		
@@ -116,6 +164,8 @@ class Server():
 			self.handle_acc_create_event(parsed_event, client, ctx)
 		elif event_type == Events.SEND_MESSAGE.value:
 			self.handle_send_message_event(parsed_event, client, ctx)
+		elif event_type == Events.REQ_SEND_UPDATES.value:
+			self.handle_client_refresh_event(parsed_event, client, ctx)
 		else:
 			client.send(f'Unknown event type {event_type}'.encode('utf-8'))
 
@@ -138,16 +188,6 @@ class Server():
 
 
 	def start(self):
-		# initialise database
-		users_database = Database()
-
-		# initialise message queue
-		mq_init()
-		mq_set_log_level(2)
-
-		# initialise socket map
-		client_to_socket_map = ClientSocketMap()
-
 		listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		listener.bind(("0.0.0.0", PORT))
 		listener.listen(128)

@@ -4,6 +4,8 @@ import src.utils.pretty_printing as prettyf
 import getpass
 import os
 
+from src.client.client import Client
+
 
 global log_level
 log_level = 0
@@ -51,17 +53,15 @@ def get_account_action():
     return int(choice)
 
 
-def process_account_action(choice: int):
+def process_account_action(choice: int, client: Client) -> bool:
     if choice == 1: # Login
         username = input("> Username: ")
         password = getpass.getpass("> Password: ")
 
-        ret = 1 # TODO: send login req
+        client.set_credentials(username, password)
+        ret = client.send_acc_login()
 
-        if (ret == 1):
-            return True
-        else:
-            return False
+        return client.logged_in
 
     if choice == 2: # Create account
         username = input("> Username: ")
@@ -73,9 +73,10 @@ def process_account_action(choice: int):
             print(err)
             return False
 
-        # TODO: send_create_req
+        client.set_credentials(username, password)
+        ret = client.send_acc_create(username, password)
 
-        return True
+        return client.logged_in
 
     if choice == 0: # Delete
         username = input("> Username: ")
@@ -102,24 +103,32 @@ def process_account_action(choice: int):
     return False
 
 
-def main():
-    friends = ["cristi", "dani", "rares", "mihai"]
-
+def main(client: Client):
     while True:
+        # clear_screen()
+        # print(f'Welcome, {client.username}!')
+
+        CHOICE_MSG = 1
+        CHOICE_FRIEND_ADD = 2
+        CHOICE_FRIEND_RM = 3
+        CHOICE_REFRESH = 4
+        CHOICE_EXIT = 0
+
         print("\nChoose an option:")
         print("1. Send message")
         print("2. Add friend")
         print("3. Remove friend")
-        print("4. Exit")
+        print("4. Refresh")
+        print("0. Exit")
 
         choice = input("\nEnter your choice: ")
 
         if choice.isdigit():
             choice = int(choice)
 
-            if choice == 1:
+            if choice == CHOICE_MSG:
                 print("\nYour friends:")
-                for i, friend in enumerate(friends, start = 1):
+                for i, friend in enumerate(client.friends, start = 1):
                     print(f"{i}. {friend}")
 
                 friend_index = input("Choose a friend to message (by number): ")
@@ -127,57 +136,78 @@ def main():
                 if friend_index.isdigit():
                     friend_index = int(friend_index) - 1
 
-                    if (0 <= friend_index) and (friend_index < len(friends)):
-                        print("(Type '/back' to go back.)")
-                        while True:
-                            message = input("Enter your message> ").strip()
+                    if (0 <= friend_index) and (friend_index < len(client.friends)):
+                        friend_username = client.friends[friend_index]
+                        first_render = True
 
-                            if (message == "/back"):
+                        while True:
+                            clear_screen()
+                            if first_render:
+                                print(f'New chat started with {friend_username}')
+                            else:
+                                print(f'Chat with {friend_username}')
+                                client.get_updates()
+
+                                for message in client.logs[friend_username]:
+                                    print(message)
+
+                            first_render = False
+                            print("(Type your message, '/r' to refresh or '/b' to go back.)")
+
+                            message = input("> ").strip()
+
+                            if (message == "/b"):
                                 break
 
-                            print(f"Message \"{message}\" sent to {friends[friend_index]}!")
+                            if (message == "/r"):
+                                continue
+                            
+                            if log_level >= 2:
+                                print(f"[INFO] Sending \"{message}\" sent to {friend_username}...")
+                            res = client.send_message(friend_username, message)
+                            if log_level >= 2:
+                                print(f"[INFO] Server said '{res}'")
+                            client.log_new_message(friend_username, message, own_message=True)
                     else:
                         print("Invalid choice. Please select a valid friend.")
                 else:
                     print("Invalid input. Please enter a valid number.")
 
-            elif choice == 2:
-                text = input("Enter the name of the new friend (or /back): ").strip()
+            elif choice == CHOICE_FRIEND_ADD:
+                text = input("Enter the name of the new friend (/b to go back): ").strip()
 
-                if (text == "/back"):
+                if (text == "/b"):
                     continue
 
                 if text:
-                    if text not in friends:
-                        friends.append(text)
+                    if text not in client.friends:
+                        client.friends.append(text)
                         print(f"{text} has been added to your friends list.")
                     else:
                         print(f"{text} is already in your friends list.")
                 else:
                     print("Friend name cannot be empty.")
 
-            elif choice == 3:
+            elif choice == CHOICE_FRIEND_RM:
                 # Remove friend
                 print("\nYour friends:")
-                for i, friend in enumerate(friends, start=1):
+                for i, friend in enumerate(client.friends, start = 1):
                     print(f"{i}. {friend}")
 
-                friend_index = input("(/back to go back) Choose a friend to remove (by number): ")
+                friend_index = input("(/b to go back) Choose a friend to remove (by number): ")
 
-                if (friend_index == "/back"):
+                if (friend_index == "/b"):
                     continue
 
                 if friend_index.isdigit():
                     friend_index = int(friend_index) - 1
-                    if 0 <= friend_index < len(friends):
+                    if 0 <= friend_index < len(client.friends):
                         confirmation = input("Are you sure? [y/n] ")
 
                         if confirmation == "n":
                             continue
 
-                        removed_friend = friends.pop(friend_index)
-
-                        # TODO: client.remove_friend(username)
+                        removed_friend = client.friends.pop(friend_index)
 
                         print(f"{removed_friend} has been removed from your friends list.")
                     else:
@@ -186,7 +216,12 @@ def main():
                 else:
                     print("Invalid input. Please enter a valid number.")
 
-            elif choice == 4:
+            elif choice == CHOICE_REFRESH:
+                client.get_updates()
+                continue
+
+            elif choice == CHOICE_EXIT:
+                client.disconnect()
                 print("See you later alligator")
                 break
 
@@ -195,8 +230,9 @@ def main():
 
         else:
             print("Invalid input. Please enter a number between 1 and 4.")
-  
-if __name__ == "__main__":
+
+PORT = 18251
+if __name__ == "__main__":   
     clear_screen()
 
     log_level_set = False
@@ -206,13 +242,14 @@ if __name__ == "__main__":
 
     clear_screen()
 
-    logged = False
+    client = Client()
+    client.connect(("0.0.0.0", PORT))
 
-    while (logged == False):
+    while (client.logged_in == False):
         choice = get_account_action()
-        logged = process_account_action(choice)
+        process_account_action(choice, client)
 
     clear_screen()
 
-    main()
+    main(client)
 

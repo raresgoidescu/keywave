@@ -11,6 +11,9 @@ class Client():
 		self.log_level = 0
 		self.logged_in = False
 
+		self.friends = []
+		self.logs = {}
+
 	
 	def set_log_level(self, log_level: int):
 		self.log_level = log_level
@@ -61,6 +64,9 @@ class Client():
 		ret = self.__send_to_server(msg)
 		self.logged_in = (ret == "Login successful")
 
+		# todo grab friends from the server's db
+		self.friends = [self.username]
+
 		return ret
 
 
@@ -93,6 +99,24 @@ class Client():
 		}
 
 		return self.__send_to_server(msg)
+	
+
+	def get_updates(self):
+		msg = {
+			'event_type': Events.REQ_SEND_UPDATES.value
+		}
+
+		res = self.__send_to_server(msg)
+		print(res)
+
+
+	def log_new_message(self, target: str, content: str, own_message = False):
+		sender = self.username if own_message else target
+
+		if not target in self.logs:
+			self.logs[target] = []
+
+		self.logs[target].append(f'{sender}: {content}')
 
 
 	def disconnect(self):
