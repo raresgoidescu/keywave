@@ -104,9 +104,6 @@ def process_account_action(choice: int, client: Client) -> bool:
 
 
 def main(client: Client):
-    # todo this needs to be a field in client
-    friends = ["cristi", "dani", "rares", "mihai"]
-
     while True:
         # clear_screen()
         # print(f'Welcome, {client.username}!')
@@ -131,7 +128,7 @@ def main(client: Client):
 
             if choice == CHOICE_MSG:
                 print("\nYour friends:")
-                for i, friend in enumerate(friends, start = 1):
+                for i, friend in enumerate(client.friends, start = 1):
                     print(f"{i}. {friend}")
 
                 friend_index = input("Choose a friend to message (by number): ")
@@ -139,19 +136,25 @@ def main(client: Client):
                 if friend_index.isdigit():
                     friend_index = int(friend_index) - 1
 
-                    if (0 <= friend_index) and (friend_index < len(friends)):
+                    if (0 <= friend_index) and (friend_index < len(client.friends)):
+                        friend_username = client.friends[friend_index]
+                        clear_screen()
+
+                        print(f'Chat started with {friend_username}')
                         print("(Type '/back' to go back.)")
+
                         while True:
-                            message = input("Enter your message> ").strip()
+                            message = input("> ").strip()
 
                             if (message == "/back"):
                                 break
                             
                             if log_level >= 2:
-                                print(f"[INFO] Sending \"{message}\" sent to {friends[friend_index]}...")
-                            res = client.send_message(friends[friend_index], message)
+                                print(f"[INFO] Sending \"{message}\" sent to {friend_username}...")
+                            res = client.send_message(friend_username, message)
                             if log_level >= 2:
                                 print(f"[INFO] Server said '{res}'")
+                            client.get_updates()
                     else:
                         print("Invalid choice. Please select a valid friend.")
                 else:
@@ -164,8 +167,8 @@ def main(client: Client):
                     continue
 
                 if text:
-                    if text not in friends:
-                        friends.append(text)
+                    if text not in client.friends:
+                        client.friends.append(text)
                         print(f"{text} has been added to your friends list.")
                     else:
                         print(f"{text} is already in your friends list.")
@@ -175,7 +178,7 @@ def main(client: Client):
             elif choice == CHOICE_FRIEND_RM:
                 # Remove friend
                 print("\nYour friends:")
-                for i, friend in enumerate(friends, start=1):
+                for i, friend in enumerate(client.friends, start=1):
                     print(f"{i}. {friend}")
 
                 friend_index = input("(/back to go back) Choose a friend to remove (by number): ")
@@ -185,15 +188,13 @@ def main(client: Client):
 
                 if friend_index.isdigit():
                     friend_index = int(friend_index) - 1
-                    if 0 <= friend_index < len(friends):
+                    if 0 <= friend_index < len(client.friends):
                         confirmation = input("Are you sure? [y/n] ")
 
                         if confirmation == "n":
                             continue
 
-                        removed_friend = friends.pop(friend_index)
-
-                        # TODO: client.remove_friend(username)
+                        removed_friend = client.friends.pop(friend_index)
 
                         print(f"{removed_friend} has been removed from your friends list.")
                     else:
