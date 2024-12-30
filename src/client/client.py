@@ -93,6 +93,15 @@ class Client():
 		}
 
 		return self.__send_to_server(msg)
+	
+
+	def get_updates(self):
+		msg = {
+			'event_type': Events.REQ_SEND_UPDATES.value
+		}
+
+		res = self.__send_to_server(msg)
+		print(res)
 
 
 	def disconnect(self):
