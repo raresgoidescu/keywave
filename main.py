@@ -174,9 +174,9 @@ def main(client: Client):
                     print("Invalid input. Please enter a valid number.")
 
             elif choice == CHOICE_FRIEND_ADD:
-                text = input("Enter the name of the new friend (or /back): ").strip()
+                text = input("Enter the name of the new friend (/b to go back): ").strip()
 
-                if (text == "/back"):
+                if (text == "/b"):
                     continue
 
                 if text:
@@ -191,12 +191,12 @@ def main(client: Client):
             elif choice == CHOICE_FRIEND_RM:
                 # Remove friend
                 print("\nYour friends:")
-                for i, friend in enumerate(client.friends, start=1):
+                for i, friend in enumerate(client.friends, start = 1):
                     print(f"{i}. {friend}")
 
-                friend_index = input("(/back to go back) Choose a friend to remove (by number): ")
+                friend_index = input("(/b to go back) Choose a friend to remove (by number): ")
 
-                if (friend_index == "/back"):
+                if (friend_index == "/b"):
                     continue
 
                 if friend_index.isdigit():
