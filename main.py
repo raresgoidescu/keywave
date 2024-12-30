@@ -146,8 +146,12 @@ def main(client: Client):
 
                             if (message == "/back"):
                                 break
-
-                            print(f"Message \"{message}\" sent to {friends[friend_index]}!")
+                            
+                            if log_level >= 2:
+                                print(f"[INFO] Sending \"{message}\" sent to {friends[friend_index]}...")
+                            res = client.send_message(friends[friend_index], message)
+                            if log_level >= 2:
+                                print(f"[INFO] Server said '{res}'")
                     else:
                         print("Invalid choice. Please select a valid friend.")
                 else:
