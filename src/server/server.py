@@ -93,6 +93,35 @@ class Server():
 			client.send('Login failed'.encode('utf-8'))
 
 
+	def handle_friend_request_event(self, parsed_event: str, client: socket.socket, ctx: dict):
+		if 'username' not in ctx:
+			client.send(f'[ERROR] you need to be logged in')
+			return
+		
+		if 'target' not in ctx:
+			client.send(f'[ERROR] no target')
+			return
+		
+		source = ctx['username']
+		target = ctx['target']
+
+		# todo check if they're already friends
+
+		target_id = self.users_db.get_uid(target)
+		if target_id < 0:
+			client.send(f'[ERROR] User \'{target}\' doesn\'t exist')
+			return
+		
+		target_sck = self.client_to_socket_map.get_client_socket()
+		if target_sck is None:
+			client.send(f"[ERROR] User '{target}' is not online")
+			return
+		
+		# todo check if user is talking to someone else
+
+		# todo queue this request and send to the target client
+
+
 	def handle_event(self, event: str, client: socket.socket, ctx: dict):
 		parsed_event = {}
 		
