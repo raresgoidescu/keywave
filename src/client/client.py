@@ -11,6 +11,8 @@ class Client():
 		self.log_level = 0
 		self.logged_in = False
 
+		self.friends = []
+
 	
 	def set_log_level(self, log_level: int):
 		self.log_level = log_level
@@ -60,6 +62,9 @@ class Client():
 
 		ret = self.__send_to_server(msg)
 		self.logged_in = (ret == "Login successful")
+
+		# todo grab friends from the server's db
+		self.friends = [self.username]
 
 		return ret
 
