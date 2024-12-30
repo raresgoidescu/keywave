@@ -45,7 +45,7 @@ class Server():
 		target_sck = self.client_to_socket_map.get_client_socket(target_id)
 
 		event = {
-			'type': Events.EVT_NEW_MESSAGE,
+			'type': Events.EVT_NEW_MESSAGE.value,
 			'content': {
 				'source': ctx['username'],
 				'content': message_content
