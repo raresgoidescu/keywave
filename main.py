@@ -148,6 +148,9 @@ def main(client: Client):
                                 print(f'Chat with {friend_username}')
                                 client.get_updates()
 
+                                for message in client.logs[friend_username]:
+                                    print(message)
+
                             first_render = False
                             print("(Type your message, '/r' to refresh or '/b' to go back.)")
 
@@ -164,6 +167,7 @@ def main(client: Client):
                             res = client.send_message(friend_username, message)
                             if log_level >= 2:
                                 print(f"[INFO] Server said '{res}'")
+                            client.log_new_message(friend_username, message, own_message=True)
                     else:
                         print("Invalid choice. Please select a valid friend.")
                 else:
