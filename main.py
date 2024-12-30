@@ -4,6 +4,8 @@ import src.utils.pretty_printing as prettyf
 import getpass
 import os
 
+from src.client.client import Client
+
 
 global log_level
 log_level = 0
@@ -51,17 +53,15 @@ def get_account_action():
     return int(choice)
 
 
-def process_account_action(choice: int):
+def process_account_action(choice: int, client: Client) -> bool:
     if choice == 1: # Login
         username = input("> Username: ")
         password = getpass.getpass("> Password: ")
 
-        ret = 1 # TODO: send login req
+        client.set_credentials(username, password)
+        ret = client.send_acc_login()
 
-        if (ret == 1):
-            return True
-        else:
-            return False
+        return client.logged_in
 
     if choice == 2: # Create account
         username = input("> Username: ")
@@ -73,9 +73,10 @@ def process_account_action(choice: int):
             print(err)
             return False
 
-        # TODO: send_create_req
+        client.set_credentials(username, password)
+        ret = client.send_acc_create(username, password)
 
-        return True
+        return client.logged_in
 
     if choice == 0: # Delete
         username = input("> Username: ")
@@ -195,8 +196,9 @@ def main():
 
         else:
             print("Invalid input. Please enter a number between 1 and 4.")
-  
-if __name__ == "__main__":
+
+PORT = 18251
+if __name__ == "__main__":   
     clear_screen()
 
     log_level_set = False
@@ -206,13 +208,16 @@ if __name__ == "__main__":
 
     clear_screen()
 
-    logged = False
+    client = Client()
+    client.connect(("0.0.0.0", PORT))
 
-    while (logged == False):
+    while (client.logged_in == False):
         choice = get_account_action()
-        logged = process_account_action(choice)
+        process_account_action(choice, client)
 
     clear_screen()
+
+    print(f'Welcome, {client.username}!')
 
     main()
 
