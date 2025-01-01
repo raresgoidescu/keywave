@@ -110,6 +110,23 @@ class Client():
 		print(res)
 
 
+	def start_chat(self, target: str):
+		msg = {
+			'event_type': Events.REQ_START_CHAT.value,
+			'target': target
+		}
+
+		res = self.__send_to_server(msg)
+		success = res == 'success'
+
+		if success and self.log_level >= 2:
+			print(f'[INFO] Chat start successful')
+		elif not success and self.log_level >= 1:
+			print(f'[INFO] Chat start failed, server reponse "{res}"')
+
+		return success
+
+
 	def log_new_message(self, target: str, content: str, own_message = False):
 		sender = self.username if own_message else target
 
