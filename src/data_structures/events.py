@@ -7,6 +7,8 @@ class Events(Enum):
 	REQ_ADD_FRIEND = 3
 	REQ_SEND_UPDATES = 4
 	REQ_START_CHAT = 5
+	REQ_CHAT_INV_ACCEPT = 6
+	REQ_CHAT_INV_REJECT = 7
 	# todo DH events
 	SEND_MESSAGE = 10
 
