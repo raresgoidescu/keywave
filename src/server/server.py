@@ -2,12 +2,14 @@
 import socket
 import threading
 import json
+import time
 
 from database.database import Database
 from event_queue.event_queue import EventQueue
 from socket_map.client_socket_map import ClientSocketMap
 
 from src.data_structures.events import Events
+from src.data_structures.generic_map import GenericMap
 
 PORT = 18251
 
@@ -16,6 +18,7 @@ class Server():
 		self.users_db = Database()
 		self.events = EventQueue()
 		self.client_to_socket_map = ClientSocketMap()
+		self.pending_requests = GenericMap()
 
 	
 	def handle_disconnect_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
@@ -25,6 +28,55 @@ class Server():
 		client.close()
 
 		ctx['active'] = False
+
+
+	def handle_chat_start_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
+		target_username = parsed_event['target']
+		target_id = self.users_db.get_uid(target_username)
+		print(f"[INFO] {target_username}'s id is {target_id}")
+
+		if target_id < 0:
+			client.send(f'{target_username} doesn\'t exist :('.encode('utf-8'))
+			return
+
+		target_sck = self.client_to_socket_map.get_client_socket(target_id)
+		if target_sck is None:
+			client.send(f'{target_username} is not online right now'.encode('utf-8'))
+			return
+		
+		event = {
+			'type': Events.EVT_NEW_REQUEST.value,
+			'source': ctx['username']
+		}
+		self.events.store(event, target_id)
+
+		self.pending_requests.add(ctx['uid'], target_id)
+		
+		#* 30 sec timeout, wait until target user accepts
+		#* accepts => remove entry from the map
+		#* rejects => sets entry to -1
+		#* doesn't acknowledge => entry still there
+		timestamp = time.time()
+		print(timestamp)
+		while (time.time() - timestamp) < 30:
+			print(f'Delta = {time.time() - timestamp}, need 30 to timeout')
+
+			time.sleep(.5)
+			value = self.pending_requests.get(ctx['uid'])
+
+			if value is None:
+				# target accepted
+				client.send('success'.encode('utf-8'))
+				return
+			
+			if value == -1:
+				client.send(f'{target_username} has refused the chat invite'.encode('utf-8'))
+				return
+		
+		client.send(f'{target_username} didn\'t accept the invite in time'.encode('utf-8'))
+
+
+
 
 	
 	def handle_send_message_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
@@ -46,10 +98,8 @@ class Server():
 
 		event = {
 			'type': Events.EVT_NEW_MESSAGE.value,
-			'content': {
-				'source': ctx['username'],
-				'content': message_content
-			}
+			'source': ctx['username'],
+			'content': message_content
 		}
 		self.events.store(event, target_id)
 
@@ -127,7 +177,7 @@ class Server():
 
 	def handle_client_refresh_event(self, event: str, client: socket.socket, ctx: dict):
 		if ctx['username'] is None or ctx['uid'] == -1:
-			client.send(f'[ERROR] you need to be logged in')
+			client.send(f'[ERROR] you need to be logged in'.encode('utf-8'))
 			return
 		
 		id = ctx['uid']
@@ -142,8 +192,7 @@ class Server():
 
 
 	def handle_event(self, event: str, client: socket.socket, ctx: dict):
-		parsed_event = {}
-		
+		parsed_event = {}		
 		try:
 			parsed_event = json.loads(event)
 		except json.JSONDecodeError:
@@ -166,6 +215,8 @@ class Server():
 			self.handle_send_message_event(parsed_event, client, ctx)
 		elif event_type == Events.REQ_SEND_UPDATES.value:
 			self.handle_client_refresh_event(parsed_event, client, ctx)
+		elif event_type == Events.REQ_START_CHAT.value:
+			self.handle_chat_start_event(parsed_event, client, ctx)
 		else:
 			client.send(f'Unknown event type {event_type}'.encode('utf-8'))
 
