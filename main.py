@@ -108,6 +108,17 @@ def main(client: Client):
         # clear_screen()
         # print(f'Welcome, {client.username}!')
 
+        while len(client.pending_invites) > 0:
+            choice = input(f"You have a pending chat invite from {client.pending_invites[-1]}, accept? [y/n]: ")
+
+            if choice == 'y':
+                # todo client.accept_invite()
+                # todo take client to chat interface
+                break
+            else:
+                # todo client.reject_invite()
+                client.pending_invites.pop()
+
         CHOICE_MSG = 1
         CHOICE_FRIEND_ADD = 2
         CHOICE_FRIEND_RM = 3
