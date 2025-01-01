@@ -152,6 +152,36 @@ class Client():
 
 		self.logs[target].append(f'{sender}: {content}')
 
+	
+	def reject_invite(self):
+		if len(self.pending_invites) == 0:
+			if self.log_level >= 1: 
+				print(f"[ERROR] reject_invite() got called, but no invites are pending")
+
+			return
+		
+		target = self.pending_invites.pop()
+		msg = {
+			'event_type': Events.REQ_CHAT_INV_REJECT.value,
+			'target': target
+		}
+		return self.__send_to_server(msg)
+	
+
+	def accept_invite(self):
+		if len(self.pending_invites) == 0:
+			if self.log_level >= 1: 
+				print(f"[ERROR] accept_invite() got called, but no invites are pending")
+
+			return
+		
+		target = self.pending_invites.pop()
+		msg = {
+			'event_type': Events.REQ_CHAT_INV_ACCEPT.value,
+			'target': target
+		}
+		return self.__send_to_server(msg)
+
 
 	def disconnect(self):
 		msg = {
