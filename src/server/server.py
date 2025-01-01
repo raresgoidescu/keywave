@@ -76,6 +76,48 @@ class Server():
 		client.send(f'{target_username} didn\'t accept the invite in time'.encode('utf-8'))
 
 
+	def handle_chat_invite_reject_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
+		target_username = parsed_event['target']
+		target_id = self.users_db.get_uid(target_username)
+		print(f"[INFO] {target_username}'s id is {target_id}")
+
+		if target_id < 0:
+			client.send(f'{target_username} doesn\'t exist :('.encode('utf-8'))
+			return
+
+		target_sck = self.client_to_socket_map.get_client_socket(target_id)
+		if target_sck is None:
+			client.send(f'{target_username} is not online right now'.encode('utf-8'))
+			return
+		
+		target_pending_req = self.pending_requests.get(target_id)
+		if target_pending_req == ctx['uid']:
+			self.pending_requests.add(target_id, -1)
+			client.send('success'.encode('utf-8'))
+		else:
+			client.send(f"Reject failed: {target_username}'s active invite is for a different user")
+
+	
+	def handle_chat_invite_accept_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
+		target_username = parsed_event['target']
+		target_id = self.users_db.get_uid(target_username)
+		print(f"[INFO] {target_username}'s id is {target_id}")
+
+		if target_id < 0:
+			client.send(f'{target_username} doesn\'t exist :('.encode('utf-8'))
+			return
+
+		target_sck = self.client_to_socket_map.get_client_socket(target_id)
+		if target_sck is None:
+			client.send(f'{target_username} is not online right now'.encode('utf-8'))
+			return
+		
+		target_pending_req = self.pending_requests.get(target_id)
+		if target_pending_req == ctx['uid']:
+			self.pending_requests.remove(target_id)
+			client.send('success'.encode('utf-8'))
+		else:
+			client.send(f"Reject failed: {target_username}'s active invite is for a different user")
 
 
 	
@@ -217,6 +259,10 @@ class Server():
 			self.handle_client_refresh_event(parsed_event, client, ctx)
 		elif event_type == Events.REQ_START_CHAT.value:
 			self.handle_chat_start_event(parsed_event, client, ctx)
+		elif event_type == Events.REQ_CHAT_INV_ACCEPT.value:
+			self.handle_chat_invite_accept_event(parsed_event, client, ctx)
+		elif event_type == Events.REQ_CHAT_INV_REJECT.value:
+			self.handle_chat_invite_reject_event(parsed_event, client, ctx)
 		else:
 			client.send(f'Unknown event type {event_type}'.encode('utf-8'))
 
