@@ -13,6 +13,7 @@ class Client():
 
 		self.friends = []
 		self.logs = {}
+		self.pending_invites = []
 
 	
 	def set_log_level(self, log_level: int):
@@ -107,7 +108,23 @@ class Client():
 		}
 
 		res = self.__send_to_server(msg)
-		print(res)
+		if self.log_level >= 2:
+			print(f"[INFO] Received updates from the server: '{res}'")
+
+		try:
+			res_decoded = json.loads(res)
+		except:
+			return
+		
+		if 'updates' not in res_decoded:
+			return
+		
+		updates = res_decoded['updates']
+		for update in updates:
+			if update['type'] == Events.EVT_NEW_REQUEST.value:
+				self.pending_invites.append(update['source'])
+			elif update['type'] == Events.EVT_NEW_MESSAGE.value:
+				self.log_new_message(update['source'], update['content'])
 
 
 	def start_chat(self, target: str):
