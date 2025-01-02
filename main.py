@@ -108,72 +108,125 @@ def main(client: Client):
         # clear_screen()
         # print(f'Welcome, {client.username}!')
 
+        accepted_invite = None
+        while len(client.pending_invites) > 0:
+            pending_inv_username = client.pending_invites[-1]
+            choice = input(f"You have a pending chat invite from {pending_inv_username}, accept? [y/n]: ")
+
+            if choice == 'y':
+                inv_acc_response = client.accept_invite()
+                if inv_acc_response == 'success':
+                    accepted_invite = pending_inv_username
+                    break
+
+                print(f'[ERROR] Failed to accept invite, server response: "{inv_acc_response}"')
+                client.pending_invites.pop()
+            else:
+                client.reject_invite()
+
         CHOICE_MSG = 1
         CHOICE_FRIEND_ADD = 2
         CHOICE_FRIEND_RM = 3
         CHOICE_REFRESH = 4
         CHOICE_EXIT = 0
 
-        print("\nChoose an option:")
-        print("1. Send message")
-        print("2. Add friend")
-        print("3. Remove friend")
-        print("4. Refresh")
-        print("0. Exit")
+        main_choice = -1
+        if accepted_invite is not None:
+            main_choice = '1'
+        else:
+            print("\nChoose an option:")
+            print("1. Start a chat")
+            print("2. Add friend")
+            print("3. Remove friend")
+            print("4. Refresh")
+            print("0. Exit")
 
-        choice = input("\nEnter your choice: ")
+            main_choice = input("\nEnter your choice: ")
 
-        if choice.isdigit():
-            choice = int(choice)
+        if main_choice.isdigit():
+            main_choice = int(main_choice)
 
-            if choice == CHOICE_MSG:
-                print("\nYour friends:")
-                for i, friend in enumerate(client.friends, start = 1):
-                    print(f"{i}. {friend}")
+            if main_choice == CHOICE_MSG:
+                key = None
 
-                friend_index = input("Choose a friend to message (by number): ")
+                friend_username = ""
+                if accepted_invite is not None:
+                    friend_username = accepted_invite
 
-                if friend_index.isdigit():
-                    friend_index = int(friend_index) - 1
+                    # for the client who accepts the chat
+                    if log_level >= 2:
+                        print(f'[INFO] Client B waiting for key exchange...')
+                    key = client.begin_key_exchange(friend_username, role=2)
+                    if log_level >= 2:
+                        print(f"[INFO] Key is set to {key}")
 
-                    if (0 <= friend_index) and (friend_index < len(client.friends)):
-                        friend_username = client.friends[friend_index]
-                        first_render = True
-
-                        while True:
-                            clear_screen()
-                            if first_render:
-                                print(f'New chat started with {friend_username}')
-                            else:
-                                print(f'Chat with {friend_username}')
-                                client.get_updates()
-
-                                for message in client.logs[friend_username]:
-                                    print(message)
-
-                            first_render = False
-                            print("(Type your message, '/r' to refresh or '/b' to go back.)")
-
-                            message = input("> ").strip()
-
-                            if (message == "/b"):
-                                break
-
-                            if (message == "/r"):
-                                continue
-                            
-                            if log_level >= 2:
-                                print(f"[INFO] Sending \"{message}\" sent to {friend_username}...")
-                            res = client.send_message(friend_username, message)
-                            if log_level >= 2:
-                                print(f"[INFO] Server said '{res}'")
-                            client.log_new_message(friend_username, message, own_message=True)
-                    else:
-                        print("Invalid choice. Please select a valid friend.")
                 else:
-                    print("Invalid input. Please enter a valid number.")
+                    print("\nYour friends:")
+                    for i, friend in enumerate(client.friends, start = 1):
+                        print(f"{i}. {friend}")
 
-            elif choice == CHOICE_FRIEND_ADD:
+                    friend_username = input("Enter friend's username (or index from quick select): ")
+
+                    if friend_username.isdigit():
+                        friend_index = int(friend_username) - 1
+                        if friend_index < 0 or friend_index >= len(client.friends):
+                            print(f'Invalid input')
+                            continue
+
+                        friend_username = client.friends[friend_index]
+
+                    print(f"Waiting for {friend_username} to accept chat invite...")
+                    print(f"This may take up to 30 seconds, press CTRL-C to cancel invite")
+
+                    try:
+                        chat_started = client.start_chat(friend_username)
+                    except KeyboardInterrupt:
+                        # todo client.cancel_chat_invite()
+                        continue
+
+                    if not chat_started:
+                        print(f"[INFO] Cannot start chat with user '{friend_username}'")
+                        continue
+
+                    # for the client who starts the chat
+                    if log_level >= 2:
+                        print("[INFO] Client A waiting on key exchange...")
+                    key = client.begin_key_exchange(friend_username, role=1)
+                    if log_level >= 2:
+                        print(f"[INFO] Key is set to {key}")
+
+                first_render = True
+                print(f"[INFO] Key is {key}")
+                while True:
+                    # clear_screen()
+                    if first_render:
+                        print(f'New chat started with {friend_username}')
+                    else:
+                        print(f'Chat with {friend_username}')
+                        client.get_updates()
+
+                        for message in client.logs[friend_username]:
+                            print(message)
+
+                    first_render = False
+                    print("(Type your message, '/r' to refresh or '/b' to go back.)")
+
+                    message = input("> ").strip()
+
+                    if (message == "/b"):
+                        break
+
+                    if (message == "/r"):
+                        continue
+                    
+                    if log_level >= 2:
+                        print(f"[INFO] Sending \"{message}\" sent to {friend_username}...")
+                    res = client.send_message(friend_username, message)
+                    if log_level >= 2:
+                        print(f"[INFO] Server said '{res}'")
+                    client.log_new_message(friend_username, message, own_message=True)
+
+            elif main_choice == CHOICE_FRIEND_ADD:
                 text = input("Enter the name of the new friend (/b to go back): ").strip()
 
                 if (text == "/b"):
@@ -188,7 +241,7 @@ def main(client: Client):
                 else:
                     print("Friend name cannot be empty.")
 
-            elif choice == CHOICE_FRIEND_RM:
+            elif main_choice == CHOICE_FRIEND_RM:
                 # Remove friend
                 print("\nYour friends:")
                 for i, friend in enumerate(client.friends, start = 1):
@@ -216,11 +269,11 @@ def main(client: Client):
                 else:
                     print("Invalid input. Please enter a valid number.")
 
-            elif choice == CHOICE_REFRESH:
+            elif main_choice == CHOICE_REFRESH:
                 client.get_updates()
                 continue
 
-            elif choice == CHOICE_EXIT:
+            elif main_choice == CHOICE_EXIT:
                 client.disconnect()
                 print("See you later alligator")
                 break
@@ -243,6 +296,7 @@ if __name__ == "__main__":
     clear_screen()
 
     client = Client()
+    client.set_log_level(log_level)
     client.connect(("0.0.0.0", PORT))
 
     while (client.logged_in == False):

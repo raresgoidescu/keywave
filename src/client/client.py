@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import random
 import socket
 import json
 import sys
@@ -13,6 +14,7 @@ class Client():
 
 		self.friends = []
 		self.logs = {}
+		self.pending_invites = []
 
 	
 	def set_log_level(self, log_level: int):
@@ -25,6 +27,18 @@ class Client():
 		if self.log_level >= 2:
 			print(f'[INFO] Socket connected')
 
+
+	def __listen(self):
+		if self.log_level >= 2:
+			print(f'Waiting on server to send a message ...')
+		
+		res = self.socket.recv(1024).decode('utf-8')
+
+		if self.log_level >= 2:
+			print(f'[INFO] Received \'{res}\' from server')
+
+		return res
+	
 
 	def __send_to_server(self, message: dict, no_receive=False):
 		json_message = None
@@ -42,11 +56,7 @@ class Client():
 		if no_receive:
 			return None
 
-		res = self.socket.recv(1024).decode('utf-8')
-		if self.log_level >= 2:
-			print(f'[INFO] Received \'{res}\' from server')
-
-		return res
+		return self.__listen()
 
 
 	def set_credentials(self, username: str, password: str):
@@ -107,7 +117,153 @@ class Client():
 		}
 
 		res = self.__send_to_server(msg)
-		print(res)
+		if self.log_level >= 2:
+			print(f"[INFO] Received updates from the server: '{res}'")
+
+		try:
+			res_decoded = json.loads(res)
+		except:
+			return
+		
+		if 'updates' not in res_decoded:
+			return
+		
+		updates = res_decoded['updates']
+		for update in updates:
+			if update['type'] == Events.EVT_NEW_REQUEST.value:
+				self.pending_invites.append(update['source'])
+			elif update['type'] == Events.EVT_NEW_MESSAGE.value:
+				self.log_new_message(update['source'], update['content'])
+
+	
+	def begin_key_exchange(self, target: str, role:int):
+		if role == 1:
+			return self.__key_exchange_A(target)
+		elif role == 2:
+			return self.__key_exchange_B(target)
+		else:
+			return None
+		
+	
+	def __key_exchange_A(self, target: str):
+		p = 23 # todo generate this value, not hardcode
+		g = 5 # todo generate this value, not hardcode
+
+		msg1 = {
+			'event_type': Events.DH_PUBLIC_SHARE.value,
+			'source': self.username,
+			'target': target,
+			'mod': p,
+			'base': g
+		}
+
+		res2 = self.__send_to_server(msg1)
+		res2_json = json.loads(res2)
+		print(res2_json)
+
+		if res2_json['event_type'] != Events.DH_PUBLIC_ACK.value or res2_json['source'] != target or res2_json['target'] != self.username:
+			# todo send cancel to server
+			return None
+		
+		if res2_json['mod'] != p or res2_json['base'] != g:
+			# todo send cancel to server
+			return None
+		
+		secret_a = random.randint(500, 600)
+		A = (g ** secret_a) % p
+
+		msg3 = {
+			'event_type': Events.DH_KEY_SHARE.value,
+			'source': self.username,
+			'target': target,
+			'key': A
+		}
+
+		res4 = self.__send_to_server(msg3)
+		res4_json = json.loads(res4)
+		print(res4_json)
+
+		if res4_json['ack'] != A:
+			# todo send cancel
+			return None
+
+		B = res4_json['key']
+		secret = (B ** secret_a) % p
+
+		msg5 = {
+			'event_type': Events.DH_ACK.value, 
+			'source': self.username,
+			'target': target,
+			'ack': B
+		}
+
+		self.__send_to_server(msg5, no_receive=True)
+		return secret
+	
+	
+	def __key_exchange_B(self, target: str):
+		res1 = self.__listen()
+		res1_json = json.loads(res1)
+		print(res1_json)
+
+		if res1_json['event_type'] != Events.DH_PUBLIC_SHARE.value or res1_json['source'] != target or res1_json['target'] != self.username:
+			# todo send cancel to server
+			return None
+
+		mod = res1_json['mod']
+		base = res1_json['base']
+
+		msg2 = {
+			'event_type': Events.DH_PUBLIC_ACK.value, 
+			'source': self.username,
+			'target': target,
+			'mod': mod,
+			'base': base
+		}
+
+		res3 = self.__send_to_server(msg2)
+		res3_json = json.loads(res3)
+		print(res3_json)
+
+		A = res3_json['key']
+		
+		secret_b = random.randint(700, 800)
+		B = (base ** secret_b) % mod
+
+		msg4 = {
+			'event_type': Events.DH_KEY_ACK_SHARE.value,
+			'source': self.username,
+			'target': target,
+			'ack': A,
+			'key': B,
+		}
+		
+		secret = (A ** secret_b) % mod
+
+		res5 = self.__send_to_server(msg4)
+		res5_json = json.loads(res5)
+		if res5_json['event_type'] != Events.DH_ACK.value or res5_json['ack'] != B:
+			# todo send cancel
+			return None
+
+		return secret;
+
+
+	def start_chat(self, target: str):
+		msg = {
+			'event_type': Events.REQ_START_CHAT.value,
+			'target': target
+		}
+
+		res = self.__send_to_server(msg)
+		success = res == 'success'
+
+		if success and self.log_level >= 2:
+			print(f'[INFO] Chat start successful')
+		elif not success and self.log_level >= 1:
+			print(f'[INFO] Chat start failed, server reponse "{res}"')
+
+		return success
 
 
 	def log_new_message(self, target: str, content: str, own_message = False):
@@ -117,6 +273,36 @@ class Client():
 			self.logs[target] = []
 
 		self.logs[target].append(f'{sender}: {content}')
+
+	
+	def reject_invite(self):
+		if len(self.pending_invites) == 0:
+			if self.log_level >= 1: 
+				print(f"[ERROR] reject_invite() got called, but no invites are pending")
+
+			return
+		
+		target = self.pending_invites.pop()
+		msg = {
+			'event_type': Events.REQ_CHAT_INV_REJECT.value,
+			'target': target
+		}
+		return self.__send_to_server(msg)
+	
+
+	def accept_invite(self):
+		if len(self.pending_invites) == 0:
+			if self.log_level >= 1: 
+				print(f"[ERROR] accept_invite() got called, but no invites are pending")
+
+			return
+		
+		target = self.pending_invites.pop()
+		msg = {
+			'event_type': Events.REQ_CHAT_INV_ACCEPT.value,
+			'target': target
+		}
+		return self.__send_to_server(msg)
 
 
 	def disconnect(self):
