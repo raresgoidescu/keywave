@@ -147,9 +147,18 @@ def main(client: Client):
             main_choice = int(main_choice)
 
             if main_choice == CHOICE_MSG:
+                key = None
+
                 friend_username = ""
                 if accepted_invite is not None:
                     friend_username = accepted_invite
+
+                    # for the client who accepts the chat
+                    if log_level >= 2:
+                        print(f'[INFO] Client B waiting for key exchange...')
+                    key = client.begin_key_exchange(friend_username, role=2)
+                    if log_level >= 2:
+                        print(f"[INFO] Key is set to {key}")
 
                 else:
                     print("\nYour friends:")
@@ -179,9 +188,17 @@ def main(client: Client):
                         print(f"[INFO] Cannot start chat with user '{friend_username}'")
                         continue
 
+                    # for the client who starts the chat
+                    if log_level >= 2:
+                        print("[INFO] Client A waiting on key exchange...")
+                    key = client.begin_key_exchange(friend_username, role=1)
+                    if log_level >= 2:
+                        print(f"[INFO] Key is set to {key}")
+
                 first_render = True
+                print(f"[INFO] Key is {key}")
                 while True:
-                    clear_screen()
+                    # clear_screen()
                     if first_render:
                         print(f'New chat started with {friend_username}')
                     else:
