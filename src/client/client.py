@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import random
 import socket
 import json
 import sys
@@ -163,8 +164,41 @@ class Client():
 		if res2_json['event_type'] != Events.DH_PUBLIC_ACK.value or res2_json['source'] != target or res2_json['target'] != self.username:
 			# todo send cancel to server
 			return None
+		
+		if res2_json['mod'] != p or res2_json['base'] != g:
+			# todo send cancel to server
+			return None
+		
+		secret_a = random.randint(500, 600)
+		A = (g ** secret_a) % p
 
-		return p + g
+		msg3 = {
+			'event_type': Events.DH_KEY_SHARE.value,
+			'source': self.username,
+			'target': target,
+			'key': A
+		}
+
+		res4 = self.__send_to_server(msg3)
+		res4_json = json.loads(res4)
+		print(res4_json)
+
+		if res4_json['ack'] != A:
+			# todo send cancel
+			return None
+
+		B = res4_json['key']
+		secret = (B ** secret_a) % p
+
+		msg5 = {
+			'event_type': Events.DH_ACK.value, 
+			'source': self.username,
+			'target': target,
+			'ack': B
+		}
+
+		self.__send_to_server(msg5, no_receive=True)
+		return secret
 	
 	
 	def __key_exchange_B(self, target: str):
@@ -187,8 +221,32 @@ class Client():
 			'base': base
 		}
 
-		res3 = self.__send_to_server(msg2, no_receive=True)
-		return mod + base;
+		res3 = self.__send_to_server(msg2)
+		res3_json = json.loads(res3)
+		print(res3_json)
+
+		A = res3_json['key']
+		
+		secret_b = random.randint(700, 800)
+		B = (base ** secret_b) % mod
+
+		msg4 = {
+			'event_type': Events.DH_KEY_ACK_SHARE.value,
+			'source': self.username,
+			'target': target,
+			'ack': A,
+			'key': B,
+		}
+		
+		secret = (A ** secret_b) % mod
+
+		res5 = self.__send_to_server(msg4)
+		res5_json = json.loads(res5)
+		if res5_json['event_type'] != Events.DH_ACK.value or res5_json['ack'] != B:
+			# todo send cancel
+			return None
+
+		return secret;
 
 
 	def start_chat(self, target: str):
