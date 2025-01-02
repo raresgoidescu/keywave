@@ -2,7 +2,7 @@ import sqlite3
 import hashlib
 
 class Database:
-    def __init__(self, db_name="./users.db"):
+    def __init__(self, db_name=__file__.replace("database.py", "users.db")):
         self.db_name = db_name
         self._initialize_database()
 
