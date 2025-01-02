@@ -189,6 +189,24 @@ class Server():
 			client.send('Login failed'.encode('utf-8'))
 
 
+	def handle_dh_event(self, parsed_event: str, client: socket.socket, ctx: dict, event: str):
+		target_username = parsed_event['target']
+		target_id = self.users_db.get_uid(target_username)
+		print(f"[INFO] {target_username}'s id is {target_id}")
+
+		if target_id < 0:
+			client.send(f'{target_username} doesn\'t exist :('.encode('utf-8'))
+			return
+
+		target_sck = self.client_to_socket_map.get_client_socket(target_id)
+		if target_sck is None:
+			client.send(f'{target_username} is not online right now'.encode('utf-8'))
+			return
+		
+		target_sck.send(event.encode('utf-8'))
+		
+
+
 	def handle_friend_request_event(self, parsed_event: str, client: socket.socket, ctx: dict):
 		if 'username' not in ctx:
 			client.send(f'[ERROR] you need to be logged in')
@@ -263,6 +281,8 @@ class Server():
 			self.handle_chat_invite_accept_event(parsed_event, client, ctx)
 		elif event_type == Events.REQ_CHAT_INV_REJECT.value:
 			self.handle_chat_invite_reject_event(parsed_event, client, ctx)
+		elif event_type == Events.DH_PUBLIC_SHARE.value or event_type == Events.DH_PUBLIC_ACK.value or event_type == Events.DH_KEY_SHARE.value or event_type == Events.DH_KEY_ACK_SHARE.value or event_type == Events.DH_ACK.value:
+			self.handle_dh_event(parsed_event, client, ctx, event)
 		else:
 			client.send(f'Unknown event type {event_type}'.encode('utf-8'))
 
