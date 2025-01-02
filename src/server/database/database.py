@@ -2,7 +2,7 @@ import sqlite3
 import hashlib
 
 class Database:
-    def __init__(self, db_name="database/users.db"):
+    def __init__(self, db_name=__file__.replace("database.py", "users.db")):
         self.db_name = db_name
         self._initialize_database()
 
@@ -18,6 +18,18 @@ class Database:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT UNIQUE NOT NULL,
                     password TEXT NOT NULL
+                )
+                """
+            )
+            # always should be: user1_id < user2_id
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS connections (
+                    user1_id INTEGER NOT NULL,
+                    user2_id INTEGER NOT NULL,
+                    FOREIGN KEY (user1_id) REFERENCES users (id),
+                    FOREIGN KEY (user2_id) REFERENCES users (id),
+                    UNIQUE(user1_id, user2_id)
                 )
                 """
             )
@@ -96,3 +108,45 @@ class Database:
             
             return user[0]
 
+    def __verify_user_by_id(self, user_id):
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+
+            user = cursor.fetchone()
+            if user is None:
+                return False
+            
+            return True
+
+    def add_connection(self, user1_id, user2_id):
+        """Add a connection between two users."""
+        if not self.__verify_user_by_id(user1_id) or not self.__verify_user_by_id(user2_id):
+            print(f'[INFO] Database: user1_id = {user1_id} or user2_id = {user2_id} does not exist')
+            return False
+
+        user1_id, user2_id = sorted((user1_id, user2_id))
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT OR IGNORE INTO connections (user1_id, user2_id) VALUES (?, ?)",
+                (user1_id, user2_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def remove_connection(self, user1_id, user2_id):
+        """Remove a connection between two users."""
+        if not self.__verify_user_by_id(user1_id) or not self.__verify_user_by_id(user2_id):
+            print(f'[INFO] Database: user1_id = {user1_id} or user2_id = {user2_id} does not exist')
+            return False
+
+        user1_id, user2_id = sorted((user1_id, user2_id))
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM connections WHERE user1_id = ? AND user2_id = ?",
+                (user1_id, user2_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
