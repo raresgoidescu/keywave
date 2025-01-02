@@ -27,6 +27,18 @@ class Client():
 			print(f'[INFO] Socket connected')
 
 
+	def __listen(self):
+		if self.log_level >= 2:
+			print(f'Waiting on server to send a message ...')
+		
+		res = self.socket.recv(1024).decode('utf-8')
+
+		if self.log_level >= 2:
+			print(f'[INFO] Received \'{res}\' from server')
+
+		return res
+	
+
 	def __send_to_server(self, message: dict, no_receive=False):
 		json_message = None
 		try:
@@ -43,11 +55,7 @@ class Client():
 		if no_receive:
 			return None
 
-		res = self.socket.recv(1024).decode('utf-8')
-		if self.log_level >= 2:
-			print(f'[INFO] Received \'{res}\' from server')
-
-		return res
+		return self.__listen()
 
 
 	def set_credentials(self, username: str, password: str):
@@ -125,6 +133,62 @@ class Client():
 				self.pending_invites.append(update['source'])
 			elif update['type'] == Events.EVT_NEW_MESSAGE.value:
 				self.log_new_message(update['source'], update['content'])
+
+	
+	def begin_key_exchange(self, target: str, role:int):
+		if role == 1:
+			return self.__key_exchange_A(target)
+		elif role == 2:
+			return self.__key_exchange_B(target)
+		else:
+			return None
+		
+	
+	def __key_exchange_A(self, target: str):
+		p = 23 # todo generate this value, not hardcode
+		g = 5 # todo generate this value, not hardcode
+
+		msg1 = {
+			'event_type': Events.DH_PUBLIC_SHARE.value,
+			'source': self.username,
+			'target': target,
+			'mod': p,
+			'base': g
+		}
+
+		res2 = self.__send_to_server(msg1)
+		res2_json = json.loads(res2)
+		print(res2_json)
+
+		if res2_json['event_type'] != Events.DH_PUBLIC_ACK.value or res2_json['source'] != target or res2_json['target'] != self.username:
+			# todo send cancel to server
+			return None
+
+		return p + g
+	
+	
+	def __key_exchange_B(self, target: str):
+		res1 = self.__listen()
+		res1_json = json.loads(res1)
+		print(res1_json)
+
+		if res1_json['event_type'] != Events.DH_PUBLIC_SHARE.value or res1_json['source'] != target or res1_json['target'] != self.username:
+			# todo send cancel to server
+			return None
+
+		mod = res1_json['mod']
+		base = res1_json['base']
+
+		msg2 = {
+			'event_type': Events.DH_PUBLIC_ACK.value, 
+			'source': self.username,
+			'target': target,
+			'mod': mod,
+			'base': base
+		}
+
+		res3 = self.__send_to_server(msg2, no_receive=True)
+		return mod + base;
 
 
 	def start_chat(self, target: str):
