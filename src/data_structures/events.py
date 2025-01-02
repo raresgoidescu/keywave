@@ -9,8 +9,14 @@ class Events(Enum):
 	REQ_START_CHAT = 5
 	REQ_CHAT_INV_ACCEPT = 6
 	REQ_CHAT_INV_REJECT = 7
-	# todo DH events
 	SEND_MESSAGE = 10
+	
+	# DH events
+	DH_PUBLIC_SHARE = 101
+	DH_PUBLIC_ACK = 102
+	DH_KEY_SHARE = 103
+	DH_KEY_ACK_SHARE = 104
+	DH_ACK = 105
 
 	# client events
 	EVT_NEW_MESSAGE = 201
