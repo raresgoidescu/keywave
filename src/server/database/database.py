@@ -104,7 +104,7 @@ class Database:
 
             user = cursor.fetchone()
             if user is None:
-                return False
+                return -1
             
             return user[0]
 
