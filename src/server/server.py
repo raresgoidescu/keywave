@@ -44,9 +44,11 @@ class Server():
 			client.send(f'{target_username} is not online right now'.encode('utf-8'))
 			return
 		
+		target_known = self.users_db.find_connection(ctx['uid'], target_id)
 		event = {
 			'type': Events.EVT_NEW_REQUEST.value,
-			'source': ctx['username']
+			'source': ctx['username'],
+			'known': target_known
 		}
 		self.events.store(event, target_id)
 
@@ -167,9 +169,19 @@ class Server():
 
 			self.client_to_socket_map.add_client(acc_id, client)
 
-			client.send('Login successful'.encode('utf-8'))
+			friends = [i[0] for i in self.users_db.list_friends(acc_id)]
+			res = json.dumps({
+				'friends': friends,
+				'status': 'success'
+			})
+			
+			client.send(res.encode('utf-8'))
 		else:
-			client.send('Login failed'.encode('utf-8'))
+			res = json.dumps({
+				'friends': [],
+				'status': 'failure'
+			})
+			client.send(res.encode('utf-8'))
 
 	def handle_acc_create_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
 		username = parsed_event['username']
@@ -203,37 +215,13 @@ class Server():
 			client.send(f'{target_username} is not online right now'.encode('utf-8'))
 			return
 		
+		if parsed_event['event_type'] == Events.DH_ACK.value:
+			print(f"[INFO] New connection stored between {ctx['uid']} and {target_id}")
+
+			self.users_db.add_connection(ctx['uid'], target_id)
+
 		target_sck.send(event.encode('utf-8'))
 		
-
-
-	def handle_friend_request_event(self, parsed_event: str, client: socket.socket, ctx: dict):
-		if 'username' not in ctx:
-			client.send(f'[ERROR] you need to be logged in')
-			return
-		
-		if 'target' not in ctx:
-			client.send(f'[ERROR] no target')
-			return
-		
-		source = ctx['username']
-		target = ctx['target']
-
-		# todo check if they're already friends
-
-		target_id = self.users_db.get_uid(target)
-		if target_id < 0:
-			client.send(f'[ERROR] User \'{target}\' doesn\'t exist')
-			return
-		
-		target_sck = self.client_to_socket_map.get_client_socket()
-		if target_sck is None:
-			client.send(f"[ERROR] User '{target}' is not online")
-			return
-		
-		# todo check if user is talking to someone else
-
-		# todo queue this request and send to the target client
 
 	def handle_client_refresh_event(self, event: str, client: socket.socket, ctx: dict):
 		if ctx['username'] is None or ctx['uid'] == -1:

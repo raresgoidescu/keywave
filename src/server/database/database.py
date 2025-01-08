@@ -135,6 +135,20 @@ class Database:
             conn.commit()
             return cursor.rowcount > 0
 
+    def find_connection(self, user1_id, user2_id):
+        if not self.__verify_user_by_id(user1_id) or not self.__verify_user_by_id(user2_id):
+            print(f'[INFO] Database: user1_id = {user1_id} or user2_id = {user2_id} does not exist')
+            return False
+
+        user1_id, user2_id = sorted((user1_id, user2_id))
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM connections WHERE user1_id = ? AND user2_id = ?",
+                (user1_id, user2_id),
+            )
+            return cursor.fetchone() is not None
+
     def remove_connection(self, user1_id, user2_id):
         """Remove a connection between two users."""
         if not self.__verify_user_by_id(user1_id) or not self.__verify_user_by_id(user2_id):
@@ -150,3 +164,26 @@ class Database:
             )
             conn.commit()
             return cursor.rowcount > 0
+        
+    def list_friends(self, uid: int):
+        if not self.__verify_user_by_id(uid):
+            print(f'[INFO] Database: uid = {uid} does not exist')
+            return False
+
+        
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            ans = []
+
+            cursor.execute(
+                "SELECT username FROM connections c JOIN users u1 ON u1.id = c.user2_id WHERE user1_id = ?",
+                (uid,)
+            )
+            ans += cursor.fetchall()
+
+            cursor.execute(
+                "SELECT username FROM connections c JOIN users u2 ON u2.id = c.user1_id WHERE user2_id = ?",
+                (uid,)
+            )
+            ans += cursor.fetchall()
+            return ans
