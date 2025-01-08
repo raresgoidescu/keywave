@@ -110,8 +110,11 @@ def main(client: Client):
 
         accepted_invite = None
         while len(client.pending_invites) > 0:
-            pending_inv_username = client.pending_invites[-1]
-            choice = input(f"You have a pending chat invite from {pending_inv_username}, accept? [y/n]: ")
+            pending_inv_username = client.pending_invites[-1]['source']
+            known = client.pending_invites[-1]['known']
+
+            known_msg = ' (you\'ve never talked to them before)' if not known else ''
+            choice = input(f"You have a pending chat invite from {pending_inv_username}{known_msg}, accept? [y/n]: ")
 
             if choice == 'y':
                 inv_acc_response = client.accept_invite()
@@ -207,6 +210,7 @@ def main(client: Client):
                     # clear_screen()
                     if first_render:
                         print(f'New chat started with {friend_username}')
+                        client.add_connection(friend_username)
                     else:
                         print(f'Chat with {friend_username}')
                         client.get_updates()
