@@ -169,9 +169,19 @@ class Server():
 
 			self.client_to_socket_map.add_client(acc_id, client)
 
-			client.send('Login successful'.encode('utf-8'))
+			friends = [i[0] for i in self.users_db.list_friends(acc_id)]
+			res = json.dumps({
+				'friends': friends,
+				'status': 'success'
+			})
+			
+			client.send(res.encode('utf-8'))
 		else:
-			client.send('Login failed'.encode('utf-8'))
+			res = json.dumps({
+				'friends': [],
+				'status': 'failure'
+			})
+			client.send(res.encode('utf-8'))
 
 	def handle_acc_create_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
 		username = parsed_event['username']

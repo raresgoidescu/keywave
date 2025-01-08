@@ -71,13 +71,18 @@ class Client():
 			'password': self.password
 		}
 
-		ret = self.__send_to_server(msg)
-		self.logged_in = (ret == "Login successful")
+		res = self.__send_to_server(msg)
+		res_json = json.loads(res)
+		self.logged_in = (res_json['status'] == "success")
 
-		# todo grab friends from the server's db
-		self.friends = [self.username]
+		self.friends = [self.username] + res_json['friends']
 
-		return ret
+		return res
+
+
+	def add_connection(self, friend: str):
+		if friend not in self.friends:
+			self.friends.append(friend)
 
 
 	def send_acc_create(self):
