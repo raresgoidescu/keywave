@@ -4,6 +4,12 @@ import socket
 import json
 import sys
 
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives.hashes import SHA256
+from cryptography.hazmat.backends import default_backend
+
 from src.data_structures.events import Events
 
 class Client():
@@ -101,14 +107,105 @@ class Client():
 
 	
 	def send_message(self, target: str, content: str):
+		# TODO: get the real key
+		cipher, iv, salt = self.__encrypt_content(content, 10)
+
+		content = cipher
+
 		msg = {
 			'event_type': Events.SEND_MESSAGE.value,
 			'source': self.username,
 			'target': target,
-			'content': content
+			'content': content,
+			'iv': iv,
+			'salt': salt
 		}
 
 		return self.__send_to_server(msg)
+
+	
+	def __encrypt_content(self, content: str, key: int):
+		if self.log_level >= 2:
+			print(f'[INFO] Encrypting content with key {key} ...')
+
+		key_bytes = key.to_bytes(key.bit_length() // 8 + 1, 'big')
+
+		if self.log_level >= 2:
+			print(f'[INFO] Key bytes: {key_bytes} of len {len(key_bytes)}')
+
+		salt = random.randbytes(16)
+
+		if self.log_level >= 2:
+			print(f'[INFO] Salt: {salt} of len {len(salt)}')
+
+		hkdf = HKDF(
+			algorithm=SHA256(),
+			salt=salt,
+			info=b'key-derivation',
+			length=32,
+			backend=default_backend()
+		)
+
+		derived_key = hkdf.derive(key_bytes)
+
+		if self.log_level >= 2:
+			print(f'[INFO] Derived key: {derived_key} of len {len(derived_key)}')
+
+		iv = random.randbytes(16)
+
+		if self.log_level >= 2:
+			print(f'[INFO] IV: {iv} of len {len(iv)}')
+
+		cipher = Cipher(
+			algorithms.AES(derived_key),
+			modes.CBC(iv),
+			backend=default_backend()
+		)
+
+		encryptor = cipher.encryptor()
+		padder = padding.PKCS7(algorithms.AES.block_size).padder()
+
+		padded_content = padder.update(content.encode('utf-8')) + padder.finalize()
+
+		if self.log_level >= 2:
+			print(f'[INFO] Padded content: {padded_content} of len {len(padded_content)}')
+
+		ciphertext = encryptor.update(padded_content) + encryptor.finalize()
+
+		if self.log_level >= 2:
+			print(f'[INFO] Ciphertext: {ciphertext} of len {len(ciphertext)} and type {type(ciphertext)}')
+
+		return ciphertext, iv, salt
+
+
+	def __decrypt_content(self, content: str, key: int, iv: bytes, salt: bytes):
+		key_bytes = key.to_bytes(key.bit_length() // 8 + 1, 'big')
+
+		hkdf = HKDF(
+			algorithm=SHA256(),
+			salt=salt,
+			info=b'key-derivation',
+			length=32,
+			backend=default_backend()
+		)
+
+		derived_key = hkdf.derive(key_bytes)
+
+		cipher = Cipher(
+			algorithms.AES(derived_key),
+			modes.CBC(iv),
+			backend=default_backend()
+		)
+
+		decryptor = cipher.decryptor()
+
+		padded_content = decryptor.update(content) + decryptor.finalize()
+
+		unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+
+		message = unpadder.update(padded_content) + unpadder.finalize()
+
+		return message.decode('utf-8')
 	
 
 	def get_updates(self):
