@@ -16,7 +16,7 @@ COLORS = {
     "default": "\033[39m",
 }
 
-def format_message(message: str, color = "default", bold = False, underline = False):
+def prettyf(message: str, color = "default", bold = False, underline = False):
     """
     Format a message with color, bold, and underline styles.
 

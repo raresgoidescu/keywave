@@ -53,7 +53,7 @@ class Server():
 		self.events.store(event, target_id)
 
 		self.pending_requests.add(ctx['uid'], target_id)
-		
+
 		#* 30 sec timeout, wait until target user accepts
 		#* accepts => remove entry from the map
 		#* rejects => sets entry to -1
@@ -70,11 +70,11 @@ class Server():
 				# target accepted
 				client.send('success'.encode('utf-8'))
 				return
-			
+
 			if value == -1:
 				client.send(f'{target_username} has refused the chat invite'.encode('utf-8'))
 				return
-		
+
 		client.send(f'{target_username} didn\'t accept the invite in time'.encode('utf-8'))
 
 
@@ -91,7 +91,7 @@ class Server():
 		if target_sck is None:
 			client.send(f'{target_username} is not online right now'.encode('utf-8'))
 			return
-		
+
 		target_pending_req = self.pending_requests.get(target_id)
 		if target_pending_req == ctx['uid']:
 			self.pending_requests.add(target_id, -1)
@@ -99,7 +99,7 @@ class Server():
 		else:
 			client.send(f"Reject failed: {target_username}'s active invite is for a different user")
 
-	
+
 	def handle_chat_invite_accept_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
 		target_username = parsed_event['target']
 		target_id = self.users_db.get_uid(target_username)
@@ -113,7 +113,7 @@ class Server():
 		if target_sck is None:
 			client.send(f'{target_username} is not online right now'.encode('utf-8'))
 			return
-		
+
 		target_pending_req = self.pending_requests.get(target_id)
 		if target_pending_req == ctx['uid']:
 			self.pending_requests.remove(target_id)
@@ -173,7 +173,7 @@ class Server():
 				'friends': friends,
 				'status': 'success'
 			})
-			
+
 			client.send(res.encode('utf-8'))
 		else:
 			res = json.dumps({
@@ -215,7 +215,7 @@ class Server():
 			return
 
 		target_sck.send(event.encode('utf-8'))
-		
+
 		if parsed_event['event_type'] == Events.DH_ACK.value:
 			print(f"[INFO] New connection stored between {ctx['uid']} and {target_id}")
 			self.users_db.add_connection(ctx['uid'], target_id)

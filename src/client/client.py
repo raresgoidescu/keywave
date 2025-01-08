@@ -88,7 +88,7 @@ class Client():
 		res_json = json.loads(res)
 		self.logged_in = (res_json['status'] == "success")
 
-		self.friends = [self.username] + res_json['friends']
+		self.friends = res_json['friends']
 
 		return res
 
@@ -235,6 +235,7 @@ class Client():
 		}
 
 		res = self.__send_to_server(msg)
+
 		if self.log_level >= 2:
 			print(f"[INFO] Received updates from the server: '{res}'")
 
@@ -286,7 +287,8 @@ class Client():
 
 		res2 = self.__send_to_server(msg1)
 		res2_json = json.loads(res2)
-		print(res2_json)
+		if (self.log_level >= 2):
+			print(f'[INFO] Received response from server: {res2_json}')
 
 		if res2_json['event_type'] != Events.DH_PUBLIC_ACK.value or res2_json['source'] != target or res2_json['target'] != self.username:
 			# todo send cancel to server
@@ -308,7 +310,8 @@ class Client():
 
 		res4 = self.__send_to_server(msg3)
 		res4_json = json.loads(res4)
-		print(res4_json)
+		if (self.log_level >= 2):
+			print(f'[INFO] Received response from server: {res4_json}')
 
 		if res4_json['ack'] != A:
 			# todo send cancel
@@ -331,7 +334,8 @@ class Client():
 	def __key_exchange_B(self, target: str):
 		res1 = self.__listen()
 		res1_json = json.loads(res1)
-		print(res1_json)
+		if (self.log_level >= 2):
+			print(f'[INFO] Received response from server: {res1_json}')
 
 		if res1_json['event_type'] != Events.DH_PUBLIC_SHARE.value or res1_json['source'] != target or res1_json['target'] != self.username:
 			# todo send cancel to server
@@ -350,7 +354,8 @@ class Client():
 
 		res3 = self.__send_to_server(msg2)
 		res3_json = json.loads(res3)
-		print(res3_json)
+		if (self.log_level >= 2):
+			print(f'[INFO] Received response from server: {res3_json}')
 
 		A = res3_json['key']
 

@@ -1,11 +1,10 @@
 #! /usr/bin/env python3
-            
-import src.utils.pretty_printing as prettyf
+
 import getpass
 import os
 
 from src.client.client import Client
-
+from src.utils.pretty_formatting import prettyf
 
 global log_level
 log_level = 0
@@ -18,21 +17,18 @@ def clear_screen():
 
 
 def set_log_level():
-    prompt = prettyf.format_message(
-            ">> Choose LOG_LEVEL: No logs (0), Errors (1), All (2): ",
-            bold = True, color = "green"
-            )
+    prompt = prettyf("Choose LOG_LEVEL: No logs (0), Errors (1), All (2): ", bold = True, color = "green")
     choice = input(prompt)
     stripped_choice = choice.lstrip("-")
 
     if not choice.isnumeric() or choice != stripped_choice:
-        print(prettyf.format_message("Invalid choice (not numeric)", bold = True, color = "red"))
+        print(prettyf("Invalid choice (not numeric)", bold = True, color = "red"))
         return False
 
     choice = int(choice)
 
     if choice > 2:
-        print(prettyf.format_message("Invalid choice", bold = True, color = "red"))
+        print(prettyf("Invalid choice", bold = True, color = "red"))
         return False
 
     global log_level
@@ -42,12 +38,12 @@ def set_log_level():
 
 
 def get_account_action():
-    prompt = prettyf.format_message(">> Login (1), Create Account (2), Delete Account (0): ", bold=True)
+    prompt = prettyf("Login (1), Create Account (2): ", bold = True)
     choice = input(prompt)
     stripped_choice = choice.lstrip("-")
 
     if not choice.isnumeric() or choice != stripped_choice:
-        print(prettyf.format_message("Invalid choice (not numeric)", bold = True, color = "red"))
+        print(prettyf("Invalid choice (not numeric)", bold = True, color = "red"))
         return 404;
 
     return int(choice)
@@ -55,8 +51,8 @@ def get_account_action():
 
 def process_account_action(choice: int, client: Client) -> bool:
     if choice == 1: # Login
-        username = input("> Username: ")
-        password = getpass.getpass("> Password: ")
+        username = input("Username: ")
+        password = getpass.getpass("Password: ")
 
         client.set_credentials(username, password)
         ret = client.send_acc_login()
@@ -64,13 +60,12 @@ def process_account_action(choice: int, client: Client) -> bool:
         return client.logged_in
 
     if choice == 2: # Create account
-        username = input("> Username: ")
-        password = getpass.getpass("> Password: ")
-        password_confirm = getpass.getpass("> Confirm Password: ")
+        username = input("Username: ")
+        password = getpass.getpass("Password: ")
+        password_confirm = getpass.getpass("Confirm Password: ")
 
         if password != password_confirm:
-            err = prettyf.format_message("Passwords don't match!")
-            print(err)
+            print(prettyf("Passwords don't match!"))
             return False
 
         client.set_credentials(username, password)
@@ -78,35 +73,14 @@ def process_account_action(choice: int, client: Client) -> bool:
 
         return client.logged_in
 
-    if choice == 0: # Delete
-        username = input("> Username: ")
-        password = getpass.getpass("> Password: ")
-        password_confirm = getpass.getpass("> Confirm Password: ")
-
-        if password != password_confirm:
-            err = prettyf.format_message("Passwords don't match!")
-            print(err)
-            return False
-
-        confirmation = input(
-                prettyf.format_message("Are you sure? [y/n] ", bold = True, color = "red")
-                )
-
-        if confirmation == "y":
-            # TODO: send_delete_req
-            _ = "TODO"
-
-        return False
-
-    print(prettyf.format_message("Invalid option", bold = True, color = "red"))
+    print(prettyf("Invalid option", bold = True, color = "red"))
 
     return False
 
 
 def main(client: Client):
     while True:
-        # clear_screen()
-        # print(f'Welcome, {client.username}!')
+        clear_screen()
 
         accepted_invite = None
         while len(client.pending_invites) > 0:
@@ -128,9 +102,7 @@ def main(client: Client):
                 client.reject_invite()
 
         CHOICE_MSG = 1
-        CHOICE_FRIEND_ADD = 2
-        CHOICE_FRIEND_RM = 3
-        CHOICE_REFRESH = 4
+        CHOICE_REFRESH = 2
         CHOICE_EXIT = 0
 
         main_choice = -1
@@ -139,9 +111,7 @@ def main(client: Client):
         else:
             print("\nChoose an option:")
             print("1. Start a chat")
-            print("2. Add friend")
-            print("3. Remove friend")
-            print("4. Refresh")
+            print("2. Refresh")
             print("0. Exit")
 
             main_choice = input("\nEnter your choice: ")
@@ -168,7 +138,7 @@ def main(client: Client):
                         print(f"[INFO] Key is set to {key}")
 
                 else:
-                    print("\nYour friends:")
+                    print("\nYour prior connections:")
                     for i, friend in enumerate(client.friends, start = 1):
                         print(f"{i}. {friend}")
 
@@ -205,9 +175,8 @@ def main(client: Client):
                         print(f"[INFO] Key is set to {key}")
 
                 first_render = True
-                print(f"[INFO] Key is {key}")
                 while True:
-                    # clear_screen()
+                    clear_screen()
                     if first_render:
                         print(f'New chat started with {friend_username}')
                         client.add_connection(friend_username)
@@ -228,56 +197,16 @@ def main(client: Client):
 
                     if (message == "/r"):
                         continue
-                    
+
                     if log_level >= 2:
                         print(f"[INFO] Sending \"{message}\" sent to {friend_username}...")
+
                     res = client.send_message(friend_username, message)
+
                     if log_level >= 2:
                         print(f"[INFO] Server said '{res}'")
+
                     client.log_new_message(friend_username, message, own_message=True)
-
-            elif main_choice == CHOICE_FRIEND_ADD:
-                text = input("Enter the name of the new friend (/b to go back): ").strip()
-
-                if (text == "/b"):
-                    continue
-
-                if text:
-                    if text not in client.friends:
-                        client.friends.append(text)
-                        print(f"{text} has been added to your friends list.")
-                    else:
-                        print(f"{text} is already in your friends list.")
-                else:
-                    print("Friend name cannot be empty.")
-
-            elif main_choice == CHOICE_FRIEND_RM:
-                # Remove friend
-                print("\nYour friends:")
-                for i, friend in enumerate(client.friends, start = 1):
-                    print(f"{i}. {friend}")
-
-                friend_index = input("(/b to go back) Choose a friend to remove (by number): ")
-
-                if (friend_index == "/b"):
-                    continue
-
-                if friend_index.isdigit():
-                    friend_index = int(friend_index) - 1
-                    if 0 <= friend_index < len(client.friends):
-                        confirmation = input("Are you sure? [y/n] ")
-
-                        if confirmation == "n":
-                            continue
-
-                        removed_friend = client.friends.pop(friend_index)
-
-                        print(f"{removed_friend} has been removed from your friends list.")
-                    else:
-                        print("Invalid choice. Please select a valid friend.")
-                    continue
-                else:
-                    print("Invalid input. Please enter a valid number.")
 
             elif main_choice == CHOICE_REFRESH:
                 client.get_updates()
@@ -295,7 +224,7 @@ def main(client: Client):
             print("Invalid input. Please enter a number between 1 and 4.")
 
 PORT = 18251
-if __name__ == "__main__":   
+if __name__ == "__main__":
     clear_screen()
 
     log_level_set = False
