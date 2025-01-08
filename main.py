@@ -156,7 +156,11 @@ def main(client: Client):
                     # for the client who accepts the chat
                     if log_level >= 2:
                         print(f'[INFO] Client B waiting for key exchange...')
+
                     key = client.begin_key_exchange(friend_username, role=2)
+
+                    client.set_key(key)
+
                     if log_level >= 2:
                         print(f"[INFO] Key is set to {key}")
 
@@ -192,6 +196,8 @@ def main(client: Client):
                     if log_level >= 2:
                         print("[INFO] Client A waiting on key exchange...")
                     key = client.begin_key_exchange(friend_username, role=1)
+
+                    client.set_key(key)
                     if log_level >= 2:
                         print(f"[INFO] Key is set to {key}")
 

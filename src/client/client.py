@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import base64
 import random
 import socket
 import json
@@ -22,7 +23,9 @@ class Client():
 		self.logs = {}
 		self.pending_invites = []
 
-	
+		self.key = 0
+
+
 	def set_log_level(self, log_level: int):
 		self.log_level = log_level
 
@@ -37,14 +40,14 @@ class Client():
 	def __listen(self):
 		if self.log_level >= 2:
 			print(f'Waiting on server to send a message ...')
-		
+
 		res = self.socket.recv(1024).decode('utf-8')
 
 		if self.log_level >= 2:
 			print(f'[INFO] Received \'{res}\' from server')
 
 		return res
-	
+
 
 	def __send_to_server(self, message: dict, no_receive=False):
 		json_message = None
@@ -54,7 +57,7 @@ class Client():
 			if self.log_level >= 1:
 				print(f'[ERROR] Cannot encode message :(')
 			return
-		
+
 		self.socket.send(json_message.encode('utf-8'))
 		if self.log_level >= 2:
 			print(f'[INFO] Sending \'{json_message}\' to server')
@@ -69,7 +72,11 @@ class Client():
 		self.username = username
 		self.password = password
 
-	
+
+	def set_key(self, key: int):
+		self.key = key
+
+
 	def send_acc_login(self):
 		msg = {
 			'event_type': Events.REQ_ACC_LOGIN.value,
@@ -98,32 +105,42 @@ class Client():
 
 		return ret
 
-	
+
 	def send_acc_delete(self):
 		if self.log_level >= 1:
 			print(f'[ERROR] This feature is not implemented yet')
 
 		pass
 
-	
-	def send_message(self, target: str, content: str):
-		# TODO: get the real key
-		cipher, iv, salt = self.__encrypt_content(content, 10)
 
-		content = cipher
+	def send_message(self, target: str, content: str):
+		cipher_bytes, iv_bytes, salt_bytes = self.__encrypt_content(content, self.key)
+
+		b64_content_bytes = base64.b64encode(cipher_bytes)
+		b64_content_string = b64_content_bytes.decode("utf-8")
+
+		b64_iv_bytes = base64.b64encode(iv_bytes)
+		b64_iv_string = b64_iv_bytes.decode("utf-8")
+
+		b64_salt_bytes = base64.b64encode(salt_bytes)
+		b64_salt_string = b64_salt_bytes.decode("utf-8")
+
+		b64_content = {
+			'b64_content': b64_content_string,
+			'b64_iv': b64_iv_string,
+			'b64_salt': b64_salt_string
+		}
 
 		msg = {
 			'event_type': Events.SEND_MESSAGE.value,
 			'source': self.username,
 			'target': target,
-			'content': content,
-			'iv': iv,
-			'salt': salt
+			'content': b64_content
 		}
 
 		return self.__send_to_server(msg)
 
-	
+
 	def __encrypt_content(self, content: str, key: int):
 		if self.log_level >= 2:
 			print(f'[INFO] Encrypting content with key {key} ...')
@@ -198,15 +215,14 @@ class Client():
 		)
 
 		decryptor = cipher.decryptor()
-
-		padded_content = decryptor.update(content) + decryptor.finalize()
-
 		unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
 
-		message = unpadder.update(padded_content) + unpadder.finalize()
+		decrypted_content = decryptor.update(content) + decryptor.finalize()
+
+		message = unpadder.update(decrypted_content) + unpadder.finalize()
 
 		return message.decode('utf-8')
-	
+
 
 	def get_updates(self):
 		msg = {
@@ -221,18 +237,24 @@ class Client():
 			res_decoded = json.loads(res)
 		except:
 			return
-		
+
 		if 'updates' not in res_decoded:
 			return
-		
+
 		updates = res_decoded['updates']
 		for update in updates:
 			if update['type'] == Events.EVT_NEW_REQUEST.value:
 				self.pending_invites.append(update['source'])
 			elif update['type'] == Events.EVT_NEW_MESSAGE.value:
-				self.log_new_message(update['source'], update['content'])
+				iv_bytes = base64.b64decode(update['content']['b64_iv'])
+				salt_bytes = base64.b64decode(update['content']['b64_salt'])
+				content_bytes = base64.b64decode(update['content']['b64_content'])
 
-	
+				content = self.__decrypt_content(content_bytes, self.key, iv_bytes, salt_bytes)
+
+				self.log_new_message(update['source'], content)
+
+
 	def begin_key_exchange(self, target: str, role:int):
 		if role == 1:
 			return self.__key_exchange_A(target)
@@ -240,8 +262,8 @@ class Client():
 			return self.__key_exchange_B(target)
 		else:
 			return None
-		
-	
+
+
 	def __key_exchange_A(self, target: str):
 		p = 23 # todo generate this value, not hardcode
 		g = 5 # todo generate this value, not hardcode
@@ -261,11 +283,11 @@ class Client():
 		if res2_json['event_type'] != Events.DH_PUBLIC_ACK.value or res2_json['source'] != target or res2_json['target'] != self.username:
 			# todo send cancel to server
 			return None
-		
+
 		if res2_json['mod'] != p or res2_json['base'] != g:
 			# todo send cancel to server
 			return None
-		
+
 		secret_a = random.randint(500, 600)
 		A = (g ** secret_a) % p
 
@@ -296,8 +318,8 @@ class Client():
 
 		self.__send_to_server(msg5, no_receive=True)
 		return secret
-	
-	
+
+
 	def __key_exchange_B(self, target: str):
 		res1 = self.__listen()
 		res1_json = json.loads(res1)
@@ -323,7 +345,7 @@ class Client():
 		print(res3_json)
 
 		A = res3_json['key']
-		
+
 		secret_b = random.randint(700, 800)
 		B = (base ** secret_b) % mod
 
@@ -334,7 +356,7 @@ class Client():
 			'ack': A,
 			'key': B,
 		}
-		
+
 		secret = (A ** secret_b) % mod
 
 		res5 = self.__send_to_server(msg4)
@@ -371,21 +393,21 @@ class Client():
 
 		self.logs[target].append(f'{sender}: {content}')
 
-	
+
 	def reject_invite(self):
 		if len(self.pending_invites) == 0:
 			if self.log_level >= 1: 
 				print(f"[ERROR] reject_invite() got called, but no invites are pending")
 
 			return
-		
+
 		target = self.pending_invites.pop()
 		msg = {
 			'event_type': Events.REQ_CHAT_INV_REJECT.value,
 			'target': target
 		}
 		return self.__send_to_server(msg)
-	
+
 
 	def accept_invite(self):
 		if len(self.pending_invites) == 0:
@@ -393,7 +415,7 @@ class Client():
 				print(f"[ERROR] accept_invite() got called, but no invites are pending")
 
 			return
-		
+
 		target = self.pending_invites.pop()
 		msg = {
 			'event_type': Events.REQ_CHAT_INV_ACCEPT.value,
