@@ -131,7 +131,10 @@ class Client():
 		updates = res_decoded['updates']
 		for update in updates:
 			if update['type'] == Events.EVT_NEW_REQUEST.value:
-				self.pending_invites.append(update['source'])
+				self.pending_invites.append({
+					'source': update['source'],
+					'known': update['known']
+				})
 			elif update['type'] == Events.EVT_NEW_MESSAGE.value:
 				self.log_new_message(update['source'], update['content'])
 
@@ -285,7 +288,7 @@ class Client():
 		target = self.pending_invites.pop()
 		msg = {
 			'event_type': Events.REQ_CHAT_INV_REJECT.value,
-			'target': target
+			'target': target['source']
 		}
 		return self.__send_to_server(msg)
 	
@@ -300,7 +303,7 @@ class Client():
 		target = self.pending_invites.pop()
 		msg = {
 			'event_type': Events.REQ_CHAT_INV_ACCEPT.value,
-			'target': target
+			'target': target['source']
 		}
 		return self.__send_to_server(msg)
 

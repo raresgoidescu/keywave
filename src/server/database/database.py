@@ -135,6 +135,20 @@ class Database:
             conn.commit()
             return cursor.rowcount > 0
 
+    def find_connection(self, user1_id, user2_id):
+        if not self.__verify_user_by_id(user1_id) or not self.__verify_user_by_id(user2_id):
+            print(f'[INFO] Database: user1_id = {user1_id} or user2_id = {user2_id} does not exist')
+            return False
+
+        user1_id, user2_id = sorted((user1_id, user2_id))
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM connections WHERE user1_id = ? AND user2_id = ?",
+                (user1_id, user2_id),
+            )
+            return cursor.fetchone() is not None
+
     def remove_connection(self, user1_id, user2_id):
         """Remove a connection between two users."""
         if not self.__verify_user_by_id(user1_id) or not self.__verify_user_by_id(user2_id):
