@@ -122,7 +122,6 @@ class Server():
 			client.send(f"Reject failed: {target_username}'s active invite is for a different user")
 
 
-	
 	def handle_send_message_event(self, parsed_event: dict, client: socket.socket, ctx: dict):
 		target_username = parsed_event['target']
 		message_content = parsed_event['content']
@@ -137,7 +136,7 @@ class Server():
 		if target_id < 0:
 			client.send(f'{target_username} doesn\'t exist :('.encode('utf-8'))
 			return
-		
+
 		target_sck = self.client_to_socket_map.get_client_socket(target_id)
 
 		event = {
@@ -162,7 +161,7 @@ class Server():
 		print(f"[INFO] Attempted login by '{username}' with pass '{password}'")
 		acc_id = self.users_db.verify_user(username, password)
 		print(f"[INFO] Retrieved id = {acc_id} for ['{username}', '{password}']")
-		
+
 		if acc_id > 0:
 			ctx['username'] = username
 			ctx['uid'] = acc_id
@@ -189,7 +188,7 @@ class Server():
 
 		print(f"[INFO] Creating new account '{username}' with pass '{password}'")
 		new_acc_id = self.users_db.add_user(username, password)
-		
+
 		if new_acc_id > 0:
 			ctx['username'] = username
 			ctx['uid'] = new_acc_id
@@ -214,25 +213,24 @@ class Server():
 		if target_sck is None:
 			client.send(f'{target_username} is not online right now'.encode('utf-8'))
 			return
-		
-		if parsed_event['event_type'] == Events.DH_ACK.value:
-			print(f"[INFO] New connection stored between {ctx['uid']} and {target_id}")
-
-			self.users_db.add_connection(ctx['uid'], target_id)
 
 		target_sck.send(event.encode('utf-8'))
 		
+		if parsed_event['event_type'] == Events.DH_ACK.value:
+			print(f"[INFO] New connection stored between {ctx['uid']} and {target_id}")
+			self.users_db.add_connection(ctx['uid'], target_id)
+
 
 	def handle_client_refresh_event(self, event: str, client: socket.socket, ctx: dict):
 		if ctx['username'] is None or ctx['uid'] == -1:
 			client.send(f'[ERROR] you need to be logged in'.encode('utf-8'))
 			return
-		
+
 		id = ctx['uid']
 		updates = []
 		while not self.events.empty(id):
 			updates.append(self.events.pop_front(id))
-		
+
 		res = json.dumps({
 			"updates": updates
 		})
