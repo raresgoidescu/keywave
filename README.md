@@ -8,27 +8,36 @@ Link to the repository: [keywave](https://github.com/raresgoidescu/keywave)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Client Side](#client-side)
-	- [Diffie-Hellman Key Exchange Protocol](#diffie-hellman-key-exchange-protocol)
-	- [Encryption / Decryption](#encryption--decryption)
+  - [Diffie-Hellman Key Exchange Protocol](#diffie-hellman-key-exchange-protocol)
+  - [Encryption / Decryption](#encryption--decryption)
+  - [Credits](#credits)
 - [Server Side](#server-side)
-	- [Functionality](#functionality)
-	- [Client Connect / Disconnect and the server socket map](#client-connect--disconnect-and-the-server-socket-map)
-	- [Event queue](#event-queue)
-	- [Sending updates](#sending-updates)
-	- [Account Login / Account Create requests](#account-login--account-create-requests)
-	- [Inviting another user to a chat room](#inviting-another-user-to-a-chat-room)
-	- [Diffie-Hellmann Key Exchange Events](#diffie-hellmann-key-exchange-events)
+  - [Functionality](#functionality)
+  - [Client Connect / Disconnect and the server socket map](#client-connect--disconnect-and-the-server-socket-map)
+  - [Event queue](#event-queue)
+  - [Sending updates](#sending-updates)
+  - [Account Login / Account Create requests](#account-login--account-create-requests)
+  - [Inviting another user to a chat room](#inviting-another-user-to-a-chat-room)
+  - [Diffie-Hellmann Key Exchange Events](#diffie-hellmann-key-exchange-events)
+  - [Credits](#credits-1)
 - [Database](#database)
-	- [Main Functionalities](#main-functionalities)
-	- [How it works](#how-it-works)
-	- [Testing the database](#testing-the-database)
+  - [Main Functionalities](#main-functionalities)
+  - [How it works](#how-it-works)
+  - [Testing the database](#testing-the-database)
+  - [Credits](#credits-2)
 - [Interface (CLI)](#interface-cli)
-	- [Configuration](#configuration)
-	- [Authentication](#authentication)
-	- [Main Interface Loop](#main-interface-loop)
-	- [Chat Initialization](#chat-initialization)
-	- [Error Handling](#error-handling)
-	- [Platform Compatibility](#platform-compatibility)
+  - [Configuration](#configuration)
+  - [Authentication](#authentication)
+  - [Main Interface Loop](#main-interface-loop)
+  - [Chat Initialization](#chat-initialization)
+  - [Error Handling](#error-handling)
+  - [Platform Compatibility](#platform-compatibility)
+  - [Credits](#credits-3)
+- [Problems encountered along the way](#problems-encountered-along-the-way)
+  - [Blocking Operations](#blocking-operations)
+  - [Shortcomings](#shortcomings)
+  - [Our Next Steps](#our-next-steps)
+- [Contributors](#contributors)
 
 <ins>***NOTE***</ins>: To make the imports work, run `source setup.sh` in the root dir of the project.
 
@@ -370,6 +379,23 @@ The implementation includes cross-platform support for screen clearing operation
 ### Credits
 
 Cîrstian Daniel, Goidescu Rareș-Ștefan
+
+## Problems encountered along the way
+
+#### Blocking Operations
+
+- `socket.recv()` and `input()` are blocking operations so we can't update the interface while one of these is waiting for data
+
+#### Shortcomings
+
+- users have to refresh the chat room to get messages sent by others
+- users have to refresh the main menu to get chat invites
+- users have to type special (`/b` and `/r`) commands to exit and refresh
+
+#### Our Next Steps
+
+- We plan to use multithreading in the client interface by having the main thread render the UI and another thread to handle these blocking operations
+- We also plan to create another client interface, based on GUI instead of CLI
 
 ## Contributors
 
