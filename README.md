@@ -1,34 +1,101 @@
-# KeyWave Chat Application
+# [KeyWave Chat Application](https://github.com/raresgoidescu/keywave)
+
+Link to the repository: [keywave](https://github.com/raresgoidescu/keywave)
 
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [How to install?](#how-to-install)
-- [How to use?](#how-to-use)
+- [Installation](#installation)
+- [Usage](#usage)
 - [Client Side](#client-side)
 	- [Diffie-Hellman Key Exchange Protocol](#diffie-hellman-key-exchange-protocol)
-    - [Encryption / Decryption](#encryption--decryption)
+	- [Encryption / Decryption](#encryption--decryption)
 - [Server Side](#server-side)
-    - [Functionality](#functionality)
-    - [Client Connect / Disconnect and the server socket map](#client-connect--disconnect-and-the-server-socket-map)
-    - [Event queue](#event-queue)
-    - [Sending updates](#sending-updates)
-    - [Account Login / Account Create requests](#account-login--account-create-requests)
-    - [Inviting another user to a chat room](#inviting-another-user-to-a-chat-room)
-    - [Diffie-Hellmann Key Exchange Events](#diffie-hellmann-key-exchange-events)
+	- [Functionality](#functionality)
+	- [Client Connect / Disconnect and the server socket map](#client-connect--disconnect-and-the-server-socket-map)
+	- [Event queue](#event-queue)
+	- [Sending updates](#sending-updates)
+	- [Account Login / Account Create requests](#account-login--account-create-requests)
+	- [Inviting another user to a chat room](#inviting-another-user-to-a-chat-room)
+	- [Diffie-Hellmann Key Exchange Events](#diffie-hellmann-key-exchange-events)
+- [Database](#database)
+	- [Main Functionalities](#main-functionalities)
+	- [How it works](#how-it-works)
+	- [Testing the database](#testing-the-database)
 - [Interface (CLI)](#interface-cli)
-    - [Configuration](#configuration)
-    - [Authentication](#authentication)
-    - [Main Interface Loop](#main-interface-loop)
-    - [Chat Initialization](#chat-initialization)
-    - [Error Handling](#error-handling)
-    - [Platform Compatibility](#platform-compatibility)
+	- [Configuration](#configuration)
+	- [Authentication](#authentication)
+	- [Main Interface Loop](#main-interface-loop)
+	- [Chat Initialization](#chat-initialization)
+	- [Error Handling](#error-handling)
+	- [Platform Compatibility](#platform-compatibility)
 
 <ins>***NOTE***</ins>: To make the imports work, run `source setup.sh` in the root dir of the project.
 
-## How to install?
+## Introduction
 
-## How to use?
+KeyWave is a privacy oriented chat application that allows users to communicate privately over a network with no security compromises.
+The application uses the Diffie-Hellman key exchange protocol to establish a secure connection between users and encrypts messages using AES-256 in CBC mode.
+
+The application consists of two main components:
+- A client-side application that provides a secure chat interface for users.
+- A server-side application that manages user connections, chat invitations, and message forwarding.
+
+The client application provides a command-line interface for user interaction, including account creation, login, chat initiation, and message exchange.
+The server application acts as a central node that connects users and forwards messages between them, ensuring secure communication.
+
+The server is designed to be oblivious to the content of messages, only forwarding them to the intended recipient without decryption.
+
+## Installation
+
+Clone the repository and navigate to the project directory:
+
+```bash
+git clone https://github.com/raresgoidescu/keywave.git && cd keywave
+```
+
+Create a virtual environment and activate it:
+
+```bash
+python3 -m venv .
+source bin/activate
+```
+
+We tried to keep the application as minimal as possible in terms of dependencies, so the only required package is `cryptography`.
+
+To install the requirements, run:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+Before running the application, make sure to set up the `PYTHONPATH` environment variable to include the project root directory:
+
+```bash
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+```
+
+or source the `setup.sh` script:
+
+```bash
+source setup.sh
+```
+
+Sadly this needs to be done on any newly opened terminal.
+
+To start the server, run:
+
+```bash
+./src/server/server.py
+```
+
+To start the client, run:
+
+```bash
+./main.py
+```
 
 ## Client Side
 
@@ -130,8 +197,15 @@ Here is a diagram of the requests the server is able to handle:
 
 ### Client Connect / Disconnect and the server socket map
 
-The server uses a `map` to store `client_id -> client_socket` records, to be able to quickly retrieve the socket of a specific target user and forward a message to them.
+We use a dictionary to map the client's username to its respective socket. This allows us to easily send messages to a specific client by looking up the socket associated with the username.
+
+To do this, we wrote a wrapper class `GenericMap` that provides a generic way to map keys to values.
+The class provides methods to add, remove, and get values associated with keys.
+
+We then used this class to create a mapping of usernames to sockets (`client_id: int -> socket: socket.socket`) to be able to quickly retrieve the socket of a specific target user and forward a message to them.
 This map is also used to check whether a given user is connected to the server right now, which helps, for example, when a user is trying to join a chat room with someone who is not online.
+
+(<ins>*Note*</ins>: This was also tested in the `tests/test_client_socket_map.py` script using the `unittest` module)
 
 The `client connected` and `client disconnected` events are received on the listener socket and are handled on the server by adding or removing an entry from the map.
 For every `client connected` event, a `thread` is started to handle that client's requests.
@@ -152,11 +226,7 @@ When a user sends a `get updates` request, all events stored in their queue will
 
 ### Account Login / Account Create requests
 
-When the user first connects, they are asked to provide username and password credentials, which are used to authenticate them in the `database`.
-
-### TODO baga partea lu dani aici
-
-If the credentials are correct and the authentication is successful, the server also queries the database to find a list of "friends", ie. other users that this user has chatted with before.
+When the user first connects, they are asked to provide username and password credentials, which are used to authenticate them in the [`database`](#database).
 
 The server then responds via the same socket with a `JSON` response containing `status`, which is either `success` or `failure` and a list of friends, that the client will store locally in order to quickly select who to chat with.
 
@@ -173,6 +243,63 @@ If `B` fails to accept in the 30-second window, an error response is sent to use
 
 The server is **completely oblivious** to the key exchange, it just redirects any Diffie-Hellmann-related message to its target. 
 While it is able to read the public shared data between the two clients (ie. `mod` and `base`), it is not able to compute the secret key.
+
+## Database
+
+The server sets up a simple database using SQLite3 to manage its users and their previous connections.
+The database supports basic operations like adding, verifying, and deleting users, as well as managing connections between them.
+
+The database has two tables:
+- `users`: Contains id (unique identifier), username (must be unique), and password (hashed).
+- `connections`:
+    1. Stores pairs of connected users with `user1_id` and `user2_id`, ensuring no duplicates and referencing the users table.
+    2. The pairs are saved as `user1_id`, `user2_id` if `user1_id` is lower than `user2_id`, and `user2_id`, `user1_id` if `user2_id` is lower than `user1_id`.
+
+### Main Functionalities
+
+- User Management
+	- Add User (`add_user`): Adds a new user to the database with a username and hashed password. Returns the new user's ID or -1 if the username is already taken.
+	- Delete User (`delete_user`): Deletes a user if the username and password match what's in the database.
+	- Verify User (`verify_user`): Checks if the username and password are correct and returns the user ID if valid, or -1 otherwise.
+	- Get User ID (`get_uid`): Finds the ID of a user based on their username.
+- Connection Management
+	- Add Connection (`add_connection`): Links two users together. It always stores connections as (smaller_id, larger_id) to maintain consistency.
+	- Find Connection (`find_connection`): Checks if two users are connected.
+	- Remove Connection (`remove_connection`): Deletes the link between two users.
+	- List Friends (`list_friends`): Gets all usernames connected to a specific user.
+- Password Security
+	- Password Hashing (`_hash_password`): Uses SHA-256 to hash passwords before storing them in the database.
+	Plain text passwords = big no-no.
+
+### How it works
+
+- Initializing the database
+	- When the Database class is initialized, it creates two tables:
+		- *users*: Stores user info (ID, username, hashed password).
+		- *connections*: Keeps track of user connections, ensuring no duplicates.
+- Simplicity and Error Handling
+	- All user-related and connection-related actions are straightforward SQL commands wrapped in Python methods.
+	This also ensures modularity.
+	- The app handles errors (like duplicate usernames) gracefully and provides clear outputs.
+
+### Testing the database
+
+We tested the user management features using the `src/server/database/main.py` script, where we set up a basic menu to add and delete users.
+For connection management, we tested it with the `src/server/database/test.py` script, where we created a simple menu for adding and deleting connections.
+
+We also tested the successful running of the 2 scripts with `sqlitebrowser`, for example we added 3 users with the following usernames and passwords:
+- `dani`   -> `1234`
+- `rares`  -> `12345`
+- `cristi` -> `123456`
+
+This is the result:
+
+<img src="https://static.cristimacovei.dev/test-database.png" alt="users.db" width="700"/>
+
+The IDs should theoretically increase by 1 since the ID field has the autoincrement property.
+However, in this demo, `ID = 2` is followed by 5 and 6 because we had previously deleted and added users.
+
+If the credentials are correct and the authentication is successful, the server also queries the database to find a list of "friends", i.e. other users that this user has chatted with before.
 
 ## Interface (CLI)
 
@@ -192,7 +319,7 @@ The interface provides two authentication options:
 - Account creation
 
 Both flows collect username and password inputs, with account creation requiring password confirmation.
-Password input is secured using the getpass module to prevent **shoulder surfing**.
+Password input is secured using the `getpass` module to prevent **shoulder surfing**.
 
 ### Main Interface Loop
 
