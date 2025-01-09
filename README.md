@@ -184,6 +184,10 @@ The implementation incorporates several security measures:
 The real secret information lies in the key, which is never transmitted over the network.
 So, this doesn't compromise the security of the encryption process and/or the obliviousness of the server to the content.
 
+#### Credits
+
+Cîrstian Daniel, Goidescu Rareș-Ștefan, Macovei Nicolae-Cristian
+
 ## Server Side
 
 ### Functionality
@@ -244,6 +248,10 @@ If `B` fails to accept in the 30-second window, an error response is sent to use
 The server is **completely oblivious** to the key exchange, it just redirects any Diffie-Hellmann-related message to its target. 
 While it is able to read the public shared data between the two clients (ie. `mod` and `base`), it is not able to compute the secret key.
 
+### Credits
+
+Macovei Nicolae-Cristian, Goidescu Rareș-Ștefan
+
 ## Database
 
 The server sets up a simple database using SQLite3 to manage its users and their previous connections.
@@ -301,6 +309,10 @@ However, in this demo, `ID = 2` is followed by 5 and 6 because we had previously
 
 If the credentials are correct and the authentication is successful, the server also queries the database to find a list of "friends", i.e. other users that this user has chatted with before.
 
+### Credits
+
+Cîrstian Daniel, Macovei Nicolae-Cristian
+
 ## Interface (CLI)
 
 The interface provides user authentication, chat management, and message exchange functionality through an interactive console interface.
@@ -354,3 +366,13 @@ The interface implements input validation and error handling for:
 ### Platform Compatibility
 
 The implementation includes cross-platform support for screen clearing operations, detecting the operating system type to use appropriate clear screen commands (`clear` for Unix-like systems, `cls` for Windows). XD
+
+### Credits
+
+Cîrstian Daniel, Goidescu Rareș-Ștefan
+
+## Contributors
+
+- [CristiMacovei](https://github.com/CristiMacovei)
+- [raresgoidescu](https://github.com/raresgoidescu)
+- [DaniGM32](https://github.com/DaniGM32)
